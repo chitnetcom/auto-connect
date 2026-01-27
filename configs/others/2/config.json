@@ -11,25 +11,36 @@
       "https:\/\/dns.google\/dns-query"
     ]
   },
-  "inbounds" : [
+  "inbounds": [
     {
-      "listen" : "127.0.0.1",
-      "port" : 1080,
-      "protocol" : "socks",
-      "settings" : {
-        "auth" : "noauth",
-        "udp" : true
+      "listen": "127.0.0.1",
+      "port": 1080,
+      "protocol": "http",
+      "settings": {
+        "auth": "noauth",
+        "udp": true
       },
-      "sniffing" : {
-        "destOverride" : [
+      "sniffing": {
+        "destOverride": [
           "http",
           "tls",
           "quic"
         ],
-        "enabled" : true,
-        "routeOnly" : true
+        "enabled": true,
+        "routeOnly": true
       },
-      "tag" : "socks"
+      "tag": "http"
+    },
+    {
+      "listen": "127.0.0.1",
+      "port": 2080,
+      "protocol": "shadowsocks",
+      "settings": {
+        "method": "aes-128-gcm",
+        "password": "saeed123",
+        "udp": true
+      },
+      "tag": "ss"
     }
   ],
   "outbounds" : [
@@ -38,7 +49,7 @@
       "settings" : {
         "vnext" : [
           {
-            "address" : "chatgpt.com",
+            "address" : "172.64.152.0",
             "port" : 8443,
             "users" : [
               {
@@ -75,18 +86,5 @@
       "protocol" : "blackhole",
       "tag" : "block"
     }
-  ],
-  "routing" : {
-    "domainMatcher" : "linear",
-    "domainStrategy" : "IPIfNonMatch",
-    "rules" : [
-      {
-        "ip" : [
-          "geoip:ir"
-        ],
-        "outboundTag" : "direct",
-        "type" : "field"
-      }
-    ]
-  }
+  ]
 }

@@ -1,0 +1,120 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f4f9;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.container {
+    width: 100%;
+    max-width: 800px;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+h1, h2 {
+    color: #333;
+}
+
+.control-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #eee;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.status-container {
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.status-running { color: #28a745; }
+.status-stopped { color: #dc3545; }
+.status-starting { color: #ffc107; }
+
+.actions button {
+    padding: 10px 20px;
+    margin-left: 10px;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+#startBtn { background-color: #28a745; color: white; }
+#startBtn:hover { background-color: #218838; }
+
+#stopBtn { background-color: #dc3545; color: white; }
+#stopBtn:hover { background-color: #c82333; }
+
+.latency-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.latency-actions {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+#testLatencyBtn {
+    padding: 8px 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#testLatencyBtn:disabled {
+    background-color: #ccc;
+}
+
+#configTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#configTable th, #configTable td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+#configTable th {
+    background-color: #f8f9fa;
+}
+
+.switch-btn {
+    padding: 5px 10px;
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.log-viewer {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 10px;
+    height: 400px;
+    overflow-y: auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9em;
+    border-radius: 4px;
+    white-space: pre-wrap;
+}

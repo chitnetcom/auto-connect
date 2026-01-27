@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xray Auto-Connect</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Xray Auto-Connect</h1>
+        
+        <div class="control-panel">
+            <div class="status-container">
+                Status: <span id="status" class="status-stopped">Stopped</span>
+            </div>
+            <div class="actions">
+                <button id="startBtn">Start</button>
+                <button id="stopBtn">Stop</button>
+            </div>
+        </div>
+
+        <div class="latency-section">
+            <h2>Latency Testing</h2>
+            <div class="latency-actions">
+                <button id="testLatencyBtn">Run Latency Tests</button>
+                <span id="testStatus"></span>
+            </div>
+            <table id="configTable">
+                <thead>
+                    <tr>
+                        <th>Config ID</th>
+                        <th>Latency</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="configBody">
+                    <!-- Configs will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="log-container">
+            <h2>Logs</h2>
+            <div id="logViewer" class="log-viewer"></div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
