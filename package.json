@@ -1,0 +1,20 @@
+{
+  "name": "auto-connect",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/chitnetcom/auto-connect#readme",
+  "bugs": {
+    "url": "https://github.com/chitnetcom/auto-connect/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chitnetcom/auto-connect.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "dns" : {
+    "hosts" : {
+      "dns.google" : [
+        "8.8.8.8",
+        "8.8.4.4"
+      ]
+    },
+    "servers" : [
+      "fakedns",
+      "https:\/\/dns.google\/dns-query"
+    ]
+  },
+  "inbounds" : [
+    {
+      "listen" : "127.0.0.1",
+      "port" : 1080,
+      "protocol" : "socks",
+      "settings" : {
+        "auth" : "noauth",
+        "udp" : true
+      },
+      "sniffing" : {
+        "destOverride" : [
+          "http",
+          "tls",
+          "quic"
+        ],
+        "enabled" : true,
+        "routeOnly" : true
+      },
+      "tag" : "socks"
+    }
+  ],
+  "outbounds" : [
+    {
+      "protocol" : "vless",
+      "settings" : {
+        "vnext" : [
+          {
+            "address" : "172.64.152.0",
+            "port" : 8443,
+            "users" : [
+              {
+                "encryption" : "none",
+                "id" : "84952be3-805b-463d-8513-1d36e3fa1a6b"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings" : {
+        "network" : "ws",
+        "security" : "tls",
+        "tlsSettings" : {
+          "alpn" : [
+            "h2",
+            "http\/1.1"
+          ],
+          "fingerprint" : "chrome",
+          "serverName" : "api-fr1.imdev.ir"
+        },
+        "wsSettings" : {
+          "host" : "api-fr1.imdev.ir",
+          "path" : "\/abcd?ed=2048"
+        }
+      },
+      "tag" : "proxy"
+    },
+    {
+      "protocol" : "freedom",
+      "tag" : "direct"
+    },
+    {
+      "protocol" : "blackhole",
+      "tag" : "block"
+    }
+  ],
+  "routing" : {
+    "domainMatcher" : "linear",
+    "domainStrategy" : "IPIfNonMatch",
+    "rules" : [
+      {
+        "ip" : [
+          "geoip:ir"
+        ],
+        "outboundTag" : "direct",
+        "type" : "field"
+      }
+    ]
+  }
+}
