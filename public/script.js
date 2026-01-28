@@ -16,6 +16,73 @@ let activeConfigName = null;
 let currentStatus = 'Stopped';
 let configEditors = {}; // Store editor instances for accordion items
 
+// Authentication functions
+function getAuthToken() {
+    return localStorage.getItem('authToken');
+}
+
+function getAuthHeaders() {
+    const token = getAuthToken();
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+function handleUnauthorized() {
+    localStorage.removeItem('authToken');
+    window.location.href = '/login.html';
+}
+
+async function authenticatedFetch(url, options = {}) {
+    const headers = {
+        ...getAuthHeaders(),
+        ...options.headers
+    };
+    
+    const response = await fetch(url, { ...options, headers });
+    
+    if (response.status === 401) {
+        handleUnauthorized();
+        throw new Error('Unauthorized');
+    }
+    
+    return response;
+}
+
+// Check authentication on page load
+function checkAuthentication() {
+    const token = getAuthToken();
+    if (!token) {
+        window.location.href = '/login.html';
+        return false;
+    }
+    return true;
+}
+
+// Add logout button to header
+function addLogoutButton() {
+    const header = document.querySelector('header');
+    if (header && !document.getElementById('logoutBtn')) {
+        const logoutBtn = document.createElement('button');
+        logoutBtn.id = 'logoutBtn';
+        logoutBtn.className = 'btn-danger';
+        logoutBtn.textContent = 'Logout';
+        logoutBtn.style.marginLeft = 'auto';
+        logoutBtn.style.padding = '8px 16px';
+        logoutBtn.style.fontSize = '14px';
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('authToken');
+            window.location.href = '/login.html';
+        });
+        header.appendChild(logoutBtn);
+    }
+}
+
+// Initialize authentication check
+if (!checkAuthentication()) {
+    // Will redirect to login
+} else {
+    addLogoutButton();
+}
+
 // Tab Switching Logic
 const tabBtns = document.querySelectorAll('.tab-btn');
 const tabPanes = document.querySelectorAll('.tab-pane');
@@ -53,7 +120,7 @@ require(['vs/editor/editor.main'], function () {
 
 async function updateStatus() {
     try {
-        const response = await fetch('/api/status');
+        const response = await authenticatedFetch('/api/status');
         const data = await response.json();
         
         currentStatus = data.status;
@@ -97,7 +164,7 @@ async function updateStatus() {
 
 async function updateLogs() {
     try {
-        const response = await fetch('/api/logs');
+        const response = await authenticatedFetch('/api/logs');
         const data = await response.json();
         logViewer.textContent = data.logs.join('\n');
         logViewer.scrollTop = logViewer.scrollHeight;
@@ -109,7 +176,7 @@ async function updateLogs() {
 toggleServiceBtn.addEventListener('click', async () => {
     try {
         const endpoint = currentStatus === 'Running' ? '/api/stop' : '/api/start';
-        await fetch(endpoint, { method: 'POST' });
+        await authenticatedFetch(endpoint, { method: 'POST' });
         updateStatus();
     } catch (error) {
         console.error('Failed to toggle service:', error);
@@ -131,7 +198,7 @@ addConfigBtn.addEventListener('click', async () => {
     }
 
     try {
-        const response = await fetch('/api/configs', {
+        const response = await authenticatedFetch('/api/configs', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, config })
@@ -152,7 +219,7 @@ addConfigBtn.addEventListener('click', async () => {
 
 async function updateLatencyResults() {
     try {
-        const response = await fetch('/api/test-results');
+        const response = await authenticatedFetch('/api/test-results');
         const data = await response.json();
         
         const isTesting = data.isTesting;
@@ -160,7 +227,7 @@ async function updateLatencyResults() {
         if (testLatencyBtnQuick) testLatencyBtnQuick.disabled = isTesting;
         testStatus.textContent = isTesting ? 'Testing in progress...' : '';
 
-        const configsResponse = await fetch('/api/configs');
+        const configsResponse = await authenticatedFetch('/api/configs');
         const configsData = await configsResponse.json();
 
         // Update current latency in status tab
@@ -245,7 +312,7 @@ function toggleAccordion(name) {
 
 async function switchConfig(id) {
     try {
-        const response = await fetch('/api/switch', {
+        const response = await authenticatedFetch('/api/switch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id })
@@ -261,7 +328,7 @@ async function switchConfig(id) {
 async function deleteConfig(name) {
     if (!confirm(`Are you sure you want to delete config "${name}"?`)) return;
     try {
-        const response = await fetch(`/api/configs/${name}`, { method: 'DELETE' });
+        const response = await authenticatedFetch(`/api/configs/${name}`, { method: 'DELETE' });
         const data = await response.json();
         if (data.error) alert(data.error);
         updateLatencyResults();
@@ -283,7 +350,7 @@ async function saveConfig(name) {
     }
 
     try {
-        const response = await fetch(`/api/configs/${name}`, {
+        const response = await authenticatedFetch(`/api/configs/${name}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ config })
@@ -302,7 +369,7 @@ async function saveConfig(name) {
 
 const runLatencyTest = async () => {
     try {
-        await fetch('/api/test-latency', { method: 'POST' });
+        await authenticatedFetch('/api/test-latency', { method: 'POST' });
         updateLatencyResults();
     } catch (error) {
         console.error('Failed to start latency test:', error);

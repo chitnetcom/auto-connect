@@ -88,6 +88,13 @@
             </section>
         </main>
     </div>
+    <script>
+        // Check authentication before loading main script
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+    </script>
     <script src="script.js"></script>
 </body>
 </html>

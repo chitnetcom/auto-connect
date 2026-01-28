@@ -5,15 +5,33 @@ import dotenv from 'dotenv';
 import { xrayManager } from './xray-manager';
 import { logger } from './logger';
 import { latencyTester } from './latency-tester';
+import { authMiddleware, createSession, generateSessionToken } from './auth';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
+
+// Login endpoint
+app.post('/api/login', (req, res) => {
+  const { password } = req.body;
+  
+  if (password === ADMIN_PASSWORD) {
+    const token = generateSessionToken();
+    createSession(token);
+    res.json({ token, message: 'Login successful' });
+  } else {
+    res.status(401).json({ error: 'Invalid password' });
+  }
+});
+
+// Apply auth middleware to all routes except login and static files
+app.use(authMiddleware);
 
 // API Routes
 app.get('/api/status', (req, res) => {
