@@ -5,7 +5,9 @@ import axios from "axios";
 import { logger } from "./logger";
 import { xrayManager } from "./xray-manager";
 
-const TEST_URL = "http://www.google.com/generate_204";
+// const TEST_URL = "http://www.google.com/generate_204";
+const TEST_URL = "http://api.myip.com";
+const TEST_TIMEOUT = 7000;
 const START_PORT = 10000;
 
 export interface TestResult {
@@ -105,7 +107,7 @@ class LatencyTester {
                   port: port,
                   protocol: "http"
                },
-               timeout: 7000, // Increased timeout for parallel tests
+               timeout: TEST_TIMEOUT, // Increased timeout for parallel tests
             });
             const duration = Date.now() - start;
             return duration;
