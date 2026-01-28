@@ -1,8 +1,11 @@
 const statusEl = document.getElementById('status');
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
+const statusDisplay = document.getElementById('status-display');
+const activeConfigNameEl = document.getElementById('active-config-name');
+const currentLatencyEl = document.getElementById('current-latency');
+const toggleServiceBtn = document.getElementById('toggleServiceBtn');
 const logViewer = document.getElementById('logViewer');
 const testLatencyBtn = document.getElementById('testLatencyBtn');
+const testLatencyBtnQuick = document.getElementById('testLatencyBtnQuick');
 const testStatus = document.getElementById('testStatus');
 const accordionContainer = document.getElementById('accordionContainer');
 const newConfigNameInput = document.getElementById('newConfigName');
@@ -10,7 +13,32 @@ const addConfigBtn = document.getElementById('addConfigBtn');
 
 let mainEditor;
 let activeConfigName = null;
+let currentStatus = 'Stopped';
 let configEditors = {}; // Store editor instances for accordion items
+
+// Tab Switching Logic
+const tabBtns = document.querySelectorAll('.tab-btn');
+const tabPanes = document.querySelectorAll('.tab-pane');
+
+tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const target = btn.dataset.tab;
+        
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabPanes.forEach(p => p.classList.remove('active'));
+        
+        btn.classList.add('active');
+        document.getElementById(target).classList.add('active');
+
+        // Trigger layout for editors if needed
+        if (target === 'add-config-tab' && mainEditor) {
+            mainEditor.layout();
+        }
+        if (target === 'configs-tab') {
+            Object.values(configEditors).forEach(ed => ed.layout());
+        }
+    });
+});
 
 // Initialize Monaco
 require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
@@ -27,8 +55,36 @@ async function updateStatus() {
     try {
         const response = await fetch('/api/status');
         const data = await response.json();
-        statusEl.textContent = data.status;
-        statusEl.className = 'status-' + data.status.toLowerCase();
+        
+        currentStatus = data.status;
+        const statusClass = 'status-' + currentStatus.toLowerCase();
+        
+        statusEl.textContent = currentStatus;
+        statusEl.className = statusClass;
+        
+        if (statusDisplay) {
+            statusDisplay.textContent = currentStatus;
+            statusDisplay.className = statusClass;
+        }
+
+        if (toggleServiceBtn) {
+            if (currentStatus === 'Running') {
+                toggleServiceBtn.textContent = 'Stop Service';
+                toggleServiceBtn.className = 'btn-danger';
+            } else if (currentStatus === 'Starting') {
+                toggleServiceBtn.textContent = 'Starting...';
+                toggleServiceBtn.className = 'btn-warning';
+                toggleServiceBtn.disabled = true;
+            } else {
+                toggleServiceBtn.textContent = 'Start Service';
+                toggleServiceBtn.className = 'btn-success';
+                toggleServiceBtn.disabled = false;
+            }
+        }
+
+        if (activeConfigNameEl) {
+            activeConfigNameEl.textContent = data.activeConfig || 'None';
+        }
         
         if (activeConfigName !== data.activeConfig) {
             activeConfigName = data.activeConfig;
@@ -50,21 +106,13 @@ async function updateLogs() {
     }
 }
 
-startBtn.addEventListener('click', async () => {
+toggleServiceBtn.addEventListener('click', async () => {
     try {
-        await fetch('/api/start', { method: 'POST' });
+        const endpoint = currentStatus === 'Running' ? '/api/stop' : '/api/start';
+        await fetch(endpoint, { method: 'POST' });
         updateStatus();
     } catch (error) {
-        console.error('Failed to start Xray:', error);
-    }
-});
-
-stopBtn.addEventListener('click', async () => {
-    try {
-        await fetch('/api/stop', { method: 'POST' });
-        updateStatus();
-    } catch (error) {
-        console.error('Failed to stop Xray:', error);
+        console.error('Failed to toggle service:', error);
     }
 });
 
@@ -94,6 +142,8 @@ addConfigBtn.addEventListener('click', async () => {
         } else {
             newConfigNameInput.value = '';
             updateLatencyResults();
+            // Switch to configs tab
+            document.querySelector('[data-tab="configs-tab"]').click();
         }
     } catch (error) {
         console.error('Failed to add config:', error);
@@ -105,11 +155,25 @@ async function updateLatencyResults() {
         const response = await fetch('/api/test-results');
         const data = await response.json();
         
-        testLatencyBtn.disabled = data.isTesting;
-        testStatus.textContent = data.isTesting ? 'Testing in progress...' : '';
+        const isTesting = data.isTesting;
+        testLatencyBtn.disabled = isTesting;
+        if (testLatencyBtnQuick) testLatencyBtnQuick.disabled = isTesting;
+        testStatus.textContent = isTesting ? 'Testing in progress...' : '';
 
         const configsResponse = await fetch('/api/configs');
         const configsData = await configsResponse.json();
+
+        // Update current latency in status tab
+        if (activeConfigName && currentLatencyEl) {
+            const activeResult = data.results.find(r => r.id === activeConfigName);
+            if (activeResult) {
+                currentLatencyEl.textContent = activeResult.latency === 'FAILED' ? 'FAILED' : activeResult.latency + ' ms';
+                currentLatencyEl.className = activeResult.latency === 'FAILED' ? 'status-stopped' : (activeResult.latency < 500 ? 'status-running' : '');
+            } else {
+                currentLatencyEl.textContent = '-';
+                currentLatencyEl.className = '';
+            }
+        }
 
         // Keep track of which items were open
         const openItems = Array.from(document.querySelectorAll('.accordion-item.active')).map(el => el.dataset.name);
@@ -187,7 +251,7 @@ async function switchConfig(id) {
             body: JSON.stringify({ id })
         });
         const data = await response.json();
-        alert(data.message || data.error);
+        // alert(data.message || data.error);
         updateStatus();
     } catch (error) {
         console.error('Failed to switch config:', error);
@@ -228,7 +292,7 @@ async function saveConfig(name) {
         if (data.error) {
             alert(data.error);
         } else {
-            alert(`Config "${name}" updated successfully`);
+            // alert(`Config "${name}" updated successfully`);
             updateLatencyResults();
         }
     } catch (error) {
@@ -236,14 +300,17 @@ async function saveConfig(name) {
     }
 }
 
-testLatencyBtn.addEventListener('click', async () => {
+const runLatencyTest = async () => {
     try {
         await fetch('/api/test-latency', { method: 'POST' });
         updateLatencyResults();
     } catch (error) {
         console.error('Failed to start latency test:', error);
     }
-});
+};
+
+testLatencyBtn.addEventListener('click', runLatencyTest);
+if (testLatencyBtnQuick) testLatencyBtnQuick.addEventListener('click', runLatencyTest);
 
 // Polling
 setInterval(updateStatus, 2000);

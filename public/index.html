@@ -9,42 +9,84 @@
 </head>
 <body>
     <div class="container">
-        <h1>Xray Auto-Connect</h1>
-        
-        <div class="control-panel">
-            <div class="status-container">
+        <header>
+            <h1>Xray Auto-Connect</h1>
+            <div class="status-badge">
                 Status: <span id="status" class="status-stopped">Stopped</span>
             </div>
-            <div class="actions">
-                <button id="startBtn">Start</button>
-                <button id="stopBtn">Stop</button>
-            </div>
-        </div>
+        </header>
+        
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="status-tab">Status</button>
+            <button class="tab-btn" data-tab="configs-tab">Configs</button>
+            <button class="tab-btn" data-tab="add-config-tab">Add Config</button>
+            <button class="tab-btn" data-tab="logs-tab">Logs</button>
+        </nav>
 
-        <div class="config-management">
-            <h2>Manage Configs</h2>
-            <div class="add-config-form">
-                <input type="text" id="newConfigName" placeholder="Config Name">
-                <div id="editorContainer" style="height: 300px; border: 1px solid #ccc; margin: 10px 0;"></div>
-                <button id="addConfigBtn">Add Config</button>
-            </div>
-        </div>
+        <main class="tab-content">
+            <section id="status-tab" class="tab-pane active">
+                <div class="status-card">
+                    <div class="status-info">
+                        <div class="info-item">
+                            <label>Current Status:</label>
+                            <span id="status-display" class="status-stopped">Stopped</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Active Config:</label>
+                            <span id="active-config-name">-</span>
+                        </div>
+                    </div>
+                    <div class="status-actions">
+                        <button id="toggleServiceBtn" class="btn-success">Start Service</button>
+                    </div>
+                </div>
+                
+                <div class="quick-stats">
+                    <div class="stat-item">
+                        <label>Latency</label>
+                        <span id="current-latency">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <button id="testLatencyBtnQuick" class="btn-primary">Test Latency</button>
+                    </div>
+                </div>
+            </section>
 
-        <div class="latency-section">
-            <h2>Configs & Latency</h2>
-            <div class="latency-actions">
-                <button id="testLatencyBtn">Run Latency Tests</button>
-                <span id="testStatus"></span>
-            </div>
-            <div id="accordionContainer" class="accordion">
-                <!-- Accordion items will be loaded here -->
-            </div>
-        </div>
+            <section id="configs-tab" class="tab-pane">
+                <div class="section-header">
+                    <h2>Manage Configs</h2>
+                    <div class="header-actions">
+                        <button id="testLatencyBtn" class="btn-primary">Run All Tests</button>
+                        <span id="testStatus"></span>
+                    </div>
+                </div>
+                <div id="accordionContainer" class="accordion">
+                    <!-- Accordion items will be loaded here -->
+                </div>
+            </section>
 
-        <div class="log-container">
-            <h2>Logs</h2>
-            <div id="logViewer" class="log-viewer"></div>
-        </div>
+            <section id="add-config-tab" class="tab-pane">
+                <h2>Add New Configuration</h2>
+                <div class="add-config-form">
+                    <div class="form-group">
+                        <label for="newConfigName">Config Name</label>
+                        <input type="text" id="newConfigName" placeholder="e.g. My Server">
+                    </div>
+                    <div class="form-group">
+                        <label>Configuration JSON</label>
+                        <div id="editorContainer" style="height: 400px; border: 1px solid #ddd; border-radius: 4px; margin: 10px 0;"></div>
+                    </div>
+                    <button id="addConfigBtn" class="btn-success">Add Config</button>
+                </div>
+            </section>
+
+            <section id="logs-tab" class="tab-pane">
+                <div class="section-header">
+                    <h2>System Logs</h2>
+                </div>
+                <div id="logViewer" class="log-viewer"></div>
+            </section>
+        </main>
     </div>
     <script src="script.js"></script>
 </body>
