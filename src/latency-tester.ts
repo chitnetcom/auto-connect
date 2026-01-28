@@ -5,9 +5,8 @@ import axios from "axios";
 import { logger } from "./logger";
 import { xrayManager } from "./xray-manager";
 
-const TEMP_CONFIG_PATH = path.join(__dirname, "../configs/temp_test_config.json");
-const TEST_PORT = 1081;
 const TEST_URL = "http://www.google.com/generate_204";
+const START_PORT = 10000;
 
 export interface TestResult {
    id: string;
@@ -33,55 +32,69 @@ class LatencyTester {
 
       this.isTesting = true;
       this.results = [];
-      logger.log("Starting latency tests...");
+      logger.log("Starting parallel latency tests...");
 
       try {
          const configs = await xrayManager.listConfigs();
-
-         for (const item of configs) {
+         
+         const testPromises = configs.map(async (item, index) => {
             const id = item.name;
-            logger.log(`Testing config ${id}...`);
-            const latency = await this.testConfig(item.config);
-            this.results.push({ id, latency });
+            const port = START_PORT + index;
+            logger.log(`Testing config ${id} on port ${port}...`);
+            
+            const latency = await this.testConfig(item.config, port, id);
+            
+            const result = { id, latency };
+            this.results.push(result);
             logger.log(
                `Config ${id} latency: ${latency === "FAILED" ? "FAILED" : latency + "ms"}`,
             );
-         }
+            return result;
+         });
+
+         await Promise.all(testPromises);
 
          logger.log("Latency tests completed.");
          return this.results;
       } finally {
          this.isTesting = false;
-         if (await fs.pathExists(TEMP_CONFIG_PATH)) {
-            await fs.remove(TEMP_CONFIG_PATH);
+         // Clean up any remaining temp files if needed
+         const tempDir = path.join(__dirname, "../configs/temp");
+         if (await fs.pathExists(tempDir)) {
+            await fs.emptyDir(tempDir);
          }
       }
    }
 
-   private async testConfig(config: any): Promise<number | "FAILED"> {
+   private async testConfig(config: any, port: number, id: string): Promise<number | "FAILED"> {
       let testProcess: any = null;
+      const tempConfigPath = path.join(__dirname, `../configs/temp/test_config_${id.replace(/[^a-z0-9]/gi, '_')}.json`);
+      
       try {
+         // Ensure temp directory exists
+         await fs.ensureDir(path.dirname(tempConfigPath));
+
          // 1. Modify config
          const testConfig = JSON.parse(JSON.stringify(config)); // Deep clone
          if (!testConfig.inbounds || testConfig.inbounds.length === 0) {
             throw new Error("No inbounds found in config");
          }
 
-         // Modify the first inbound port to 1081
-         testConfig.inbounds[0].port = TEST_PORT;
+         // Modify the first inbound port
+         testConfig.inbounds[0].port = port;
 
          // Set log level to debug for more info
          if (!testConfig.log) testConfig.log = {};
-         testConfig.log.loglevel = "debug";
+         testConfig.log.loglevel = "error"; // Reduced log level for parallel tests
 
          // 2. Write to temp file
-         await fs.writeJson(TEMP_CONFIG_PATH, testConfig);
+         await fs.writeJson(tempConfigPath, testConfig);
 
          // 3. Spawn Xray
-         testProcess = spawn("xray", ["run", "-c", TEMP_CONFIG_PATH]);
+         testProcess = spawn("xray", ["run", "-c", tempConfigPath]);
 
          // 4. Wait for initialization
-         await new Promise((resolve) => setTimeout(resolve, 1000));
+         await new Promise((resolve) => setTimeout(resolve, 700));
 
          // 5. Measure latency
          const start = Date.now();
@@ -89,25 +102,27 @@ class LatencyTester {
             await axios.get(TEST_URL, {
                proxy: {
                   host: "127.0.0.1",
-                  port: TEST_PORT,
+                  port: port,
                   protocol: "http"
                },
-               timeout: 7000, // 5 seconds timeout for the test
+               timeout: 7000, // Increased timeout for parallel tests
             });
             const duration = Date.now() - start;
             return duration;
          } catch (err: any) {
-            logger.log(`[Axios Error] ${err.message}`);
+            // logger.log(`[Axios Error - ${id}] ${err.message}`);
             return "FAILED";
          }
       } catch (error: any) {
-         logger.log(`Error testing config: ${error.message}`);
+         logger.log(`Error testing config ${id}: ${error.message}`);
          return "FAILED";
       } finally {
          if (testProcess) {
             testProcess.kill();
-            // Wait a bit for the process to actually die and release the port
-            await new Promise((resolve) => setTimeout(resolve, 500));
+         }
+         // Clean up temp file
+         if (await fs.pathExists(tempConfigPath)) {
+            await fs.remove(tempConfigPath);
          }
       }
    }
