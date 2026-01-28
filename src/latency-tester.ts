@@ -81,7 +81,7 @@ class LatencyTester {
          testProcess = spawn("xray", ["run", "-c", TEMP_CONFIG_PATH]);
 
          // 4. Wait for initialization
-         await new Promise((resolve) => setTimeout(resolve, 500));
+         await new Promise((resolve) => setTimeout(resolve, 1000));
 
          // 5. Measure latency
          const start = Date.now();
