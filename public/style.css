@@ -83,28 +83,105 @@ h1, h2 {
     background-color: #ccc;
 }
 
-#configTable {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-#configTable th, #configTable td {
-    padding: 10px;
+/* Config Management */
+.config-management {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #fff;
     border: 1px solid #ddd;
-    text-align: left;
+    border-radius: 5px;
 }
 
-#configTable th {
-    background-color: #f8f9fa;
+.add-config-form input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
 }
 
-.switch-btn {
-    padding: 5px 10px;
-    background-color: #17a2b8;
+#addConfigBtn {
+    padding: 10px 20px;
+    background-color: #28a745;
     color: white;
     border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Accordion */
+.accordion {
+    margin-top: 15px;
+}
+
+.accordion-item {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.accordion-header {
+    background: #f8f9fa;
+    padding: 10px 15px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+}
+
+.accordion-header:hover {
+    background: #e9ecef;
+}
+
+.accordion-title {
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.latency-badge {
+    font-size: 0.8em;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: #6c757d;
+    color: white;
+}
+
+.latency-badge.good { background: #28a745; }
+.latency-badge.bad { background: #dc3545; }
+
+.accordion-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.accordion-content {
+    display: none;
+    padding: 15px;
+    border-top: 1px solid #ddd;
+    background: #fff;
+}
+
+.accordion-item.active .accordion-content {
+    display: block;
+}
+
+.delete-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
     border-radius: 3px;
     cursor: pointer;
+}
+
+.mini-editor {
+    height: 200px;
+    border: 1px solid #eee;
 }
 
 .log-viewer {

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Xray Auto-Connect</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -20,24 +21,24 @@
             </div>
         </div>
 
+        <div class="config-management">
+            <h2>Manage Configs</h2>
+            <div class="add-config-form">
+                <input type="text" id="newConfigName" placeholder="Config Name">
+                <div id="editorContainer" style="height: 300px; border: 1px solid #ccc; margin: 10px 0;"></div>
+                <button id="addConfigBtn">Add Config</button>
+            </div>
+        </div>
+
         <div class="latency-section">
-            <h2>Latency Testing</h2>
+            <h2>Configs & Latency</h2>
             <div class="latency-actions">
                 <button id="testLatencyBtn">Run Latency Tests</button>
                 <span id="testStatus"></span>
             </div>
-            <table id="configTable">
-                <thead>
-                    <tr>
-                        <th>Config ID</th>
-                        <th>Latency</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="configBody">
-                    <!-- Configs will be loaded here -->
-                </tbody>
-            </table>
+            <div id="accordionContainer" class="accordion">
+                <!-- Accordion items will be loaded here -->
+            </div>
         </div>
 
         <div class="log-container">

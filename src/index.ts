@@ -47,6 +47,29 @@ app.get('/api/configs', async (req, res) => {
   }
 });
 
+app.post('/api/configs', async (req, res) => {
+  const { name, config } = req.body;
+  if (!name || !config) {
+    return res.status(400).json({ error: 'Name and config are required' });
+  }
+  try {
+    await xrayManager.addConfig(name, config);
+    res.json({ message: `Config ${name} added` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/configs/:name', async (req, res) => {
+  const { name } = req.params;
+  try {
+    await xrayManager.removeConfig(name);
+    res.json({ message: `Config ${name} removed` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/test-latency', async (req, res) => {
   try {
     // Run tests in background
@@ -77,6 +100,11 @@ app.post('/api/switch', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  try {
+    await xrayManager.migrateConfigs();
+  } catch (err: any) {
+    console.error('Migration failed:', err.message);
+  }
 });

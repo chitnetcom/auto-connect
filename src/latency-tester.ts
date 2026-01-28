@@ -3,8 +3,8 @@ import path from "path";
 import fs from "fs-extra";
 import axios from "axios";
 import { logger } from "./logger";
+import { xrayManager } from "./xray-manager";
 
-const OTHERS_CONFIG_DIR = path.join(__dirname, "../configs/others");
 const TEMP_CONFIG_PATH = path.join(__dirname, "../configs/temp_test_config.json");
 const TEST_PORT = 1081;
 const TEST_URL = "http://www.google.com/generate_204";
@@ -36,14 +36,12 @@ class LatencyTester {
       logger.log("Starting latency tests...");
 
       try {
-         const configDirs = await fs.readdir(OTHERS_CONFIG_DIR);
+         const configs = await xrayManager.listConfigs();
 
-         for (const id of configDirs) {
-            const configPath = path.join(OTHERS_CONFIG_DIR, id, "config.json");
-            if (!(await fs.pathExists(configPath))) continue;
-
+         for (const item of configs) {
+            const id = item.name;
             logger.log(`Testing config ${id}...`);
-            const latency = await this.testConfig(configPath);
+            const latency = await this.testConfig(item.config);
             this.results.push({ id, latency });
             logger.log(
                `Config ${id} latency: ${latency === "FAILED" ? "FAILED" : latency + "ms"}`,
@@ -60,43 +58,29 @@ class LatencyTester {
       }
    }
 
-   private async testConfig(configPath: string): Promise<number | "FAILED"> {
+   private async testConfig(config: any): Promise<number | "FAILED"> {
       let testProcess: any = null;
       try {
-         // 1. Read and modify config
-         const config = await fs.readJson(configPath);
-         if (!config.inbounds || config.inbounds.length === 0) {
+         // 1. Modify config
+         const testConfig = JSON.parse(JSON.stringify(config)); // Deep clone
+         if (!testConfig.inbounds || testConfig.inbounds.length === 0) {
             throw new Error("No inbounds found in config");
          }
 
          // Modify the first inbound port to 1081
-         config.inbounds[0].port = TEST_PORT;
+         testConfig.inbounds[0].port = TEST_PORT;
 
          // Set log level to debug for more info
-         if (!config.log) config.log = {};
-         config.log.loglevel = "debug";
+         if (!testConfig.log) testConfig.log = {};
+         testConfig.log.loglevel = "debug";
 
          // 2. Write to temp file
-         await fs.writeJson(TEMP_CONFIG_PATH, config);
-
-         // logger.log(`TEMP_CONFIG_PATH: ${TEMP_CONFIG_PATH}`);
+         await fs.writeJson(TEMP_CONFIG_PATH, testConfig);
 
          // 3. Spawn Xray
          testProcess = spawn("xray", ["run", "-c", TEMP_CONFIG_PATH]);
 
-         // testProcess.stdout.on('data', (data: any) => {
-         //   logger.log(`[Xray Test Stdout] ${data.toString()}`);
-         // });
-
-         // testProcess.stderr.on('data', (data: any) => {
-         //   logger.log(`[Xray Test Stderr] ${data.toString()}`);
-         // });
-
-         // testProcess.on('error', (err: any) => {
-         //   logger.log(`[Xray Test Spawn Error] ${err.message}`);
-         // });
-
-         // 4. Wait for initialization (2 seconds as per plan)
+         // 4. Wait for initialization
          await new Promise((resolve) => setTimeout(resolve, 500));
 
          // 5. Measure latency
@@ -114,9 +98,6 @@ class LatencyTester {
             return duration;
          } catch (err: any) {
             logger.log(`[Axios Error] ${err.message}`);
-            if (err.response) {
-               logger.log(`[Axios Error Response] Status: ${err.response.status}`);
-            }
             return "FAILED";
          }
       } catch (error: any) {

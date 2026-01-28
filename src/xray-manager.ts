@@ -5,6 +5,7 @@ import fs from 'fs-extra';
 
 const CONFIG_PATH = path.join(__dirname, '../configs/main/config.json');
 const OTHERS_CONFIG_DIR = path.join(__dirname, '../configs/others');
+const OTHERS_JSON_PATH = path.join(__dirname, '../configs/others.json');
 
 export enum XrayStatus {
   RUNNING = 'Running',
@@ -12,9 +13,50 @@ export enum XrayStatus {
   STARTING = 'Starting',
 }
 
+export interface ConfigItem {
+  name: string;
+  config: any;
+}
+
 class XrayManager {
   private process: ChildProcess | null = null;
   private status: XrayStatus = XrayStatus.STOPPED;
+
+  async migrateConfigs(): Promise<void> {
+    if (await fs.pathExists(OTHERS_JSON_PATH)) {
+      return;
+    }
+
+    if (!(await fs.pathExists(OTHERS_CONFIG_DIR))) {
+      await fs.writeJson(OTHERS_JSON_PATH, []);
+      return;
+    }
+
+    logger.log('Migrating configs to others.json...');
+    const dirs = await fs.readdir(OTHERS_CONFIG_DIR);
+    const configs: ConfigItem[] = [];
+
+    for (const d of dirs) {
+      const dirPath = path.join(OTHERS_CONFIG_DIR, d);
+      if ((await fs.stat(dirPath)).isDirectory()) {
+        const configPath = path.join(dirPath, 'config.json');
+        if (await fs.pathExists(configPath)) {
+          try {
+            const config = await fs.readJson(configPath);
+            configs.push({ name: d, config });
+          } catch (err: any) {
+            logger.log(`Failed to read config in ${d}: ${err.message}`);
+          }
+        }
+      }
+    }
+
+    await fs.writeJson(OTHERS_JSON_PATH, configs, { spaces: 2 });
+    logger.log(`Migrated ${configs.length} configs to ${OTHERS_JSON_PATH}`);
+    
+    // Rename old directory to backup
+    await fs.rename(OTHERS_CONFIG_DIR, `${OTHERS_CONFIG_DIR}_backup_${Date.now()}`);
+  }
 
   getStatus(): XrayStatus {
     return this.status;
@@ -78,13 +120,14 @@ class XrayManager {
     this.status = XrayStatus.STOPPED;
   }
 
-  async switchConfig(id: string): Promise<void> {
-    const sourcePath = path.join(OTHERS_CONFIG_DIR, id, 'config.json');
-    if (!(await fs.pathExists(sourcePath))) {
-      throw new Error(`Config ${id} not found`);
+  async switchConfig(name: string): Promise<void> {
+    const configs = await this.listConfigs();
+    const item = configs.find(c => c.name === name);
+    if (!item) {
+      throw new Error(`Config ${name} not found`);
     }
 
-    logger.log(`Switching to config ${id}...`);
+    logger.log(`Switching to config ${name}...`);
     
     const wasRunning = this.status === XrayStatus.RUNNING;
     if (wasRunning) {
@@ -93,26 +136,40 @@ class XrayManager {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    await fs.copy(sourcePath, CONFIG_PATH);
-    logger.log(`Config ${id} copied to main config.`);
+    await fs.writeJson(CONFIG_PATH, item.config, { spaces: 2 });
+    logger.log(`Config ${name} written to main config.`);
 
     if (wasRunning) {
       await this.start();
     }
   }
 
-  async listConfigs(): Promise<string[]> {
-    if (!(await fs.pathExists(OTHERS_CONFIG_DIR))) {
+  async listConfigs(): Promise<ConfigItem[]> {
+    if (!(await fs.pathExists(OTHERS_JSON_PATH))) {
       return [];
     }
-    const dirs = await fs.readdir(OTHERS_CONFIG_DIR);
-    const result: string[] = [];
-    for (const d of dirs) {
-      if ((await fs.stat(path.join(OTHERS_CONFIG_DIR, d))).isDirectory()) {
-        result.push(d);
-      }
+    return await fs.readJson(OTHERS_JSON_PATH);
+  }
+
+  async addConfig(name: string, config: any): Promise<void> {
+    const configs = await this.listConfigs();
+    if (configs.find(c => c.name === name)) {
+      throw new Error(`Config with name "${name}" already exists`);
     }
-    return result;
+    configs.push({ name, config });
+    await fs.writeJson(OTHERS_JSON_PATH, configs, { spaces: 2 });
+    logger.log(`Added config: ${name}`);
+  }
+
+  async removeConfig(name: string): Promise<void> {
+    let configs = await this.listConfigs();
+    const initialLength = configs.length;
+    configs = configs.filter(c => c.name !== name);
+    if (configs.length === initialLength) {
+      throw new Error(`Config "${name}" not found`);
+    }
+    await fs.writeJson(OTHERS_JSON_PATH, configs, { spaces: 2 });
+    logger.log(`Removed config: ${name}`);
   }
 }
 
