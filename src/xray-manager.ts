@@ -24,7 +24,23 @@ class XrayManager {
   private status: XrayStatus = XrayStatus.STOPPED;
   private activeConfigName: string | null = null;
 
+  async ensureFilesExist(): Promise<void> {
+    await fs.ensureDir(path.dirname(CONFIG_PATH));
+    if (!(await fs.pathExists(CONFIG_PATH))) {
+      await fs.writeJson(CONFIG_PATH, {});
+    }
+    if (!(await fs.pathExists(OTHERS_JSON_PATH))) {
+      await fs.writeJson(OTHERS_JSON_PATH, []);
+    }
+    if (!(await fs.pathExists(STATE_JSON_PATH))) {
+      await fs.writeJson(STATE_JSON_PATH, {});
+    }
+  }
+
   async migrateConfigs(): Promise<void> {
+    const othersExist = await fs.pathExists(OTHERS_JSON_PATH);
+    await this.ensureFilesExist();
+
     if (await fs.pathExists(STATE_JSON_PATH)) {
       try {
         const state = await fs.readJson(STATE_JSON_PATH);
@@ -34,12 +50,11 @@ class XrayManager {
       }
     }
 
-    if (await fs.pathExists(OTHERS_JSON_PATH)) {
+    if (othersExist) {
       return;
     }
 
     if (!(await fs.pathExists(OTHERS_CONFIG_DIR))) {
-      await fs.writeJson(OTHERS_JSON_PATH, []);
       return;
     }
 
