@@ -135,6 +135,7 @@ async function updateLatencyResults() {
                 </div>
                 <div class="accordion-content">
                     <div id="editor-${id.replace(/\s+/g, '-')}" class="mini-editor"></div>
+                    <button class="save-btn" onclick="saveConfig('${id}')">Save Changes</button>
                 </div>
             `;
             accordionContainer.appendChild(itemEl);
@@ -146,7 +147,7 @@ async function updateLatencyResults() {
                     value: JSON.stringify(item.config, null, 2),
                     language: 'json',
                     theme: 'vs-dark',
-                    readOnly: true,
+                    readOnly: false,
                     automaticLayout: true,
                     minimap: { enabled: false }
                 });
@@ -194,6 +195,36 @@ async function deleteConfig(name) {
         updateLatencyResults();
     } catch (error) {
         console.error('Failed to delete config:', error);
+    }
+}
+
+async function saveConfig(name) {
+    const editor = configEditors[name];
+    if (!editor) return;
+
+    let config;
+    try {
+        config = JSON.parse(editor.getValue());
+    } catch (e) {
+        alert('Invalid JSON config');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/configs/${name}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ config })
+        });
+        const data = await response.json();
+        if (data.error) {
+            alert(data.error);
+        } else {
+            alert(`Config "${name}" updated successfully`);
+            updateLatencyResults();
+        }
+    } catch (error) {
+        console.error('Failed to update config:', error);
     }
 }
 

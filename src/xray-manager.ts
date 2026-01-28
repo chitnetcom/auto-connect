@@ -171,6 +171,17 @@ class XrayManager {
     await fs.writeJson(OTHERS_JSON_PATH, configs, { spaces: 2 });
     logger.log(`Removed config: ${name}`);
   }
+
+  async updateConfig(name: string, newConfig: any): Promise<void> {
+    const configs = await this.listConfigs();
+    const index = configs.findIndex(c => c.name === name);
+    if (index === -1) {
+      throw new Error(`Config "${name}" not found`);
+    }
+    configs[index].config = newConfig;
+    await fs.writeJson(OTHERS_JSON_PATH, configs, { spaces: 2 });
+    logger.log(`Updated config: ${name}`);
+  }
 }
 
 export const xrayManager = new XrayManager();

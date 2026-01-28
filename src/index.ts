@@ -70,6 +70,20 @@ app.delete('/api/configs/:name', async (req, res) => {
   }
 });
 
+app.put('/api/configs/:name', async (req, res) => {
+  const { name } = req.params;
+  const { config } = req.body;
+  if (!config) {
+    return res.status(400).json({ error: 'Config is required' });
+  }
+  try {
+    await xrayManager.updateConfig(name, config);
+    res.json({ message: `Config ${name} updated` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/test-latency', async (req, res) => {
   try {
     // Run tests in background
