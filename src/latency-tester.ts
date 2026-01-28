@@ -92,7 +92,7 @@ class LatencyTester {
                   port: TEST_PORT,
                   protocol: "http"
                },
-               timeout: 5000, // 5 seconds timeout for the test
+               timeout: 7000, // 5 seconds timeout for the test
             });
             const duration = Date.now() - start;
             return duration;
