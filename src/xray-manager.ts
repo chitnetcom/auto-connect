@@ -6,6 +6,7 @@ import fs from 'fs-extra';
 const CONFIG_PATH = path.join(__dirname, '../configs/main/config.json');
 const OTHERS_CONFIG_DIR = path.join(__dirname, '../configs/others');
 const OTHERS_JSON_PATH = path.join(__dirname, '../configs/others.json');
+const STATE_JSON_PATH = path.join(__dirname, '../configs/state.json');
 
 export enum XrayStatus {
   RUNNING = 'Running',
@@ -21,8 +22,18 @@ export interface ConfigItem {
 class XrayManager {
   private process: ChildProcess | null = null;
   private status: XrayStatus = XrayStatus.STOPPED;
+  private activeConfigName: string | null = null;
 
   async migrateConfigs(): Promise<void> {
+    if (await fs.pathExists(STATE_JSON_PATH)) {
+      try {
+        const state = await fs.readJson(STATE_JSON_PATH);
+        this.activeConfigName = state.activeConfigName || null;
+      } catch (err) {
+        logger.log('Failed to read state.json');
+      }
+    }
+
     if (await fs.pathExists(OTHERS_JSON_PATH)) {
       return;
     }
@@ -60,6 +71,10 @@ class XrayManager {
 
   getStatus(): XrayStatus {
     return this.status;
+  }
+
+  getActiveConfigName(): string | null {
+    return this.activeConfigName;
   }
 
   async start(): Promise<void> {
@@ -128,6 +143,8 @@ class XrayManager {
     }
 
     logger.log(`Switching to config ${name}...`);
+    this.activeConfigName = name;
+    await this.saveState();
     
     const wasRunning = this.status === XrayStatus.RUNNING;
     if (wasRunning) {
@@ -170,6 +187,10 @@ class XrayManager {
     }
     await fs.writeJson(OTHERS_JSON_PATH, configs, { spaces: 2 });
     logger.log(`Removed config: ${name}`);
+    if (this.activeConfigName === name) {
+      this.activeConfigName = null;
+      await this.saveState();
+    }
   }
 
   async updateConfig(name: string, newConfig: any): Promise<void> {
@@ -181,6 +202,14 @@ class XrayManager {
     configs[index].config = newConfig;
     await fs.writeJson(OTHERS_JSON_PATH, configs, { spaces: 2 });
     logger.log(`Updated config: ${name}`);
+  }
+
+  private async saveState(): Promise<void> {
+    try {
+      await fs.writeJson(STATE_JSON_PATH, { activeConfigName: this.activeConfigName }, { spaces: 2 });
+    } catch (err: any) {
+      logger.log(`Failed to save state: ${err.message}`);
+    }
   }
 }
 

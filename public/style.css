@@ -143,6 +143,14 @@ h1, h2 {
     gap: 10px;
 }
 
+.active-indicator {
+    width: 10px;
+    height: 10px;
+    background-color: #28a745;
+    border-radius: 50%;
+    display: inline-block;
+}
+
 .latency-badge {
     font-size: 0.8em;
     padding: 2px 6px;

@@ -9,6 +9,7 @@ const newConfigNameInput = document.getElementById('newConfigName');
 const addConfigBtn = document.getElementById('addConfigBtn');
 
 let mainEditor;
+let activeConfigName = null;
 let configEditors = {}; // Store editor instances for accordion items
 
 // Initialize Monaco
@@ -28,6 +29,11 @@ async function updateStatus() {
         const data = await response.json();
         statusEl.textContent = data.status;
         statusEl.className = 'status-' + data.status.toLowerCase();
+        
+        if (activeConfigName !== data.activeConfig) {
+            activeConfigName = data.activeConfig;
+            updateLatencyResults();
+        }
     } catch (error) {
         console.error('Failed to fetch status:', error);
     }
@@ -122,9 +128,11 @@ async function updateLatencyResults() {
             const itemEl = document.createElement('div');
             itemEl.className = `accordion-item ${openItems.includes(id) ? 'active' : ''}`;
             itemEl.dataset.name = id;
+            const isActive = id === activeConfigName;
             itemEl.innerHTML = `
                 <div class="accordion-header" onclick="toggleAccordion('${id}')">
                     <div class="accordion-title">
+                        ${isActive ? '<span class="active-indicator"></span>' : ''}
                         ${id}
                         <span class="latency-badge ${latencyClass}">${latencyText}</span>
                     </div>

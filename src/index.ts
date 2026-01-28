@@ -17,7 +17,10 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // API Routes
 app.get('/api/status', (req, res) => {
-  res.json({ status: xrayManager.getStatus() });
+  res.json({
+    status: xrayManager.getStatus(),
+    activeConfig: xrayManager.getActiveConfigName()
+  });
 });
 
 app.post('/api/start', async (req, res) => {
