@@ -106,11 +106,7 @@ class LatencyTester {
                proxy: {
                   host: "127.0.0.1",
                   port: TEST_PORT,
-                  protocol: "http",
-                  auth: {
-                     username: "saeed",
-                     password: "saeed",
-                  },
+                  protocol: "http"
                },
                timeout: 5000, // 5 seconds timeout for the test
             });

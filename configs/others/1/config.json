@@ -49,7 +49,7 @@
       "settings" : {
         "vnext" : [
           {
-            "address" : "85.10.207.51",
+            "address" : "104.18.32.47",
             "port" : 8443,
             "users" : [
               {
@@ -86,5 +86,29 @@
       "protocol" : "blackhole",
       "tag" : "block"
     }
-  ]
+  ],
+  "routing": {
+    "domainMatcher": "linear",
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "type": "field",
+        "domain": [
+          "geosite:google",
+          "meet.google.com",
+          "geosite:apple",
+          "apple.com",
+          "icloud.com"
+        ],
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
+        "ip": [
+          "geoip:ir"
+        ],
+        "outboundTag": "direct"
+      }
+    ]
+  }
 }

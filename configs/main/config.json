@@ -1,12 +1,12 @@
 {
-  "dns": {
-    "hosts": {
-      "dns.google": [
+  "dns" : {
+    "hosts" : {
+      "dns.google" : [
         "8.8.8.8",
         "8.8.4.4"
       ]
     },
-    "servers": [
+    "servers" : [
       "fakedns",
       "https:\/\/dns.google\/dns-query"
     ]
@@ -43,48 +43,48 @@
       "tag": "ss"
     }
   ],
-  "outbounds": [
+  "outbounds" : [
     {
-      "protocol": "vless",
-      "settings": {
-        "vnext": [
+      "protocol" : "vless",
+      "settings" : {
+        "vnext" : [
           {
-            "address": "85.10.207.51",
-            "port": 8443,
-            "users": [
+            "address" : "104.18.32.47",
+            "port" : 8443,
+            "users" : [
               {
-                "encryption": "none",
-                "id": "84952be3-805b-463d-8513-1d36e3fa1a6b"
+                "encryption" : "none",
+                "id" : "84952be3-805b-463d-8513-1d36e3fa1a6b"
               }
             ]
           }
         ]
       },
-      "streamSettings": {
-        "network": "ws",
-        "security": "tls",
-        "tlsSettings": {
-          "alpn": [
+      "streamSettings" : {
+        "network" : "ws",
+        "security" : "tls",
+        "tlsSettings" : {
+          "alpn" : [
             "h2",
             "http\/1.1"
           ],
-          "fingerprint": "chrome",
-          "serverName": "api-fr1.imdev.ir"
+          "fingerprint" : "chrome",
+          "serverName" : "api-fr1.imdev.ir"
         },
-        "wsSettings": {
-          "host": "api-fr1.imdev.ir",
-          "path": "\/abcd?ed=2048"
+        "wsSettings" : {
+          "host" : "api-fr1.imdev.ir",
+          "path" : "\/abcd?ed=2048"
         }
       },
-      "tag": "proxy"
+      "tag" : "proxy"
     },
     {
-      "protocol": "freedom",
-      "tag": "direct"
+      "protocol" : "freedom",
+      "tag" : "direct"
     },
     {
-      "protocol": "blackhole",
-      "tag": "block"
+      "protocol" : "blackhole",
+      "tag" : "block"
     }
   ],
   "routing": {
@@ -92,11 +92,22 @@
     "domainStrategy": "IPIfNonMatch",
     "rules": [
       {
+        "type": "field",
+        "domain": [
+          "geosite:google",
+          "meet.google.com",
+          "geosite:apple",
+          "apple.com",
+          "icloud.com"
+        ],
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
         "ip": [
           "geoip:ir"
         ],
-        "outboundTag": "direct",
-        "type": "field"
+        "outboundTag": "direct"
       }
     ]
   }
