@@ -115,6 +115,17 @@ app.post('/api/test-latency', async (req, res) => {
   }
 });
 
+app.post('/api/test-latency/:name', async (req, res) => {
+  const { name } = req.params;
+  try {
+    // Run single test in background
+    latencyTester.runSingleTest(name).catch(err => logger.log(`Background single test error: ${err.message}`));
+    res.json({ message: `Latency testing started for config ${name}` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/test-results', (req, res) => {
   res.json({
     results: latencyTester.getResults(),

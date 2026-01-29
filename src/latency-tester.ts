@@ -69,6 +69,55 @@ class LatencyTester {
       }
    }
 
+   async runSingleTest(configName: string): Promise<TestResult> {
+      logger.log(`Starting single latency test for config: ${configName}...`);
+
+      try {
+         const configs = await xrayManager.listConfigs();
+         const configItem = configs.find(item => item.name === configName);
+         
+         if (!configItem) {
+            throw new Error(`Config ${configName} not found`);
+         }
+
+         const id = configItem.name;
+         const port = START_PORT + 0; // Use first available port for single test
+         
+         logger.log(`Testing config ${id} on port ${port}...`);
+         
+         const latency = await this.testConfig(configItem.config, port, id);
+         
+         const result = { id, latency };
+         
+         // Update the result in the results array
+         const existingIndex = this.results.findIndex(r => r.id === id);
+         if (existingIndex >= 0) {
+            this.results[existingIndex] = result;
+         } else {
+            this.results.push(result);
+         }
+         
+         logger.log(
+            `Config ${id} latency: ${latency === "FAILED" ? "FAILED" : latency + "ms"}`,
+         );
+         
+         return result;
+      } catch (error: any) {
+         logger.log(`Error testing config ${configName}: ${error.message}`);
+         const result = { id: configName, latency: "FAILED" as const };
+         
+         // Update the result in the results array
+         const existingIndex = this.results.findIndex(r => r.id === configName);
+         if (existingIndex >= 0) {
+            this.results[existingIndex] = result;
+         } else {
+            this.results.push(result);
+         }
+         
+         return result;
+      }
+   }
+
    private async testConfig(config: any, port: number, id: string): Promise<number | "FAILED"> {
       let testProcess: any = null;
       const tempConfigPath = path.join(__dirname, `../configs/temp/test_config_${id.replace(/[^a-z0-9]/gi, '_')}.json`);

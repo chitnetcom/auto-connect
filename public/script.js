@@ -268,6 +268,7 @@ async function updateLatencyResults() {
                         <span class="latency-badge ${latencyClass}">${latencyText}</span>
                     </div>
                     <div class="accordion-actions">
+                        <button class="test-btn" onclick="event.stopPropagation(); testSingleConfig('${id}')">Test</button>
                         <button class="switch-btn" onclick="event.stopPropagation(); switchConfig('${id}')">Switch</button>
                         <button class="delete-btn" onclick="event.stopPropagation(); deleteConfig('${id}')">Delete</button>
                     </div>
@@ -375,6 +376,15 @@ const runLatencyTest = async () => {
         console.error('Failed to start latency test:', error);
     }
 };
+
+async function testSingleConfig(id) {
+    try {
+        await authenticatedFetch(`/api/test-latency/${id}`, { method: 'POST' });
+        updateLatencyResults();
+    } catch (error) {
+        console.error('Failed to start single config latency test:', error);
+    }
+}
 
 testLatencyBtn.addEventListener('click', runLatencyTest);
 if (testLatencyBtnQuick) testLatencyBtnQuick.addEventListener('click', runLatencyTest);
