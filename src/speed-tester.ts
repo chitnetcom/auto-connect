@@ -6,15 +6,13 @@ const PROXY_HOST = '127.0.0.1';
 const PROXY_PORT = 1080;
 const PROXY_PROTOCOL = 'http';
 
-// Test URLs for speed testing
+// Test URLs for speed testing (using LibreSpeed servers)
 const DOWNLOAD_TEST_URLS = [
-  'https://speed.cloudflare.com/__down?bytes=10000000', // 10MB
-  'https://speed.cloudflare.com/__down?bytes=5000000',  // 5MB
-  'https://speed.cloudflare.com/__down?bytes=2000000',  // 2MB
+  'http://speedtest.ams1.nl.leaseweb.net/10mb.bin',
+  'http://proof.ovh.net/files/10Mb.dat'
 ];
 
-const UPLOAD_TEST_URL = 'https://speed.cloudflare.com/__up';
-// const PING_TEST_URL = 'https://www.google.com/generate_204';
+const UPLOAD_TEST_URL = 'http://httpbin.org/post';
 const PING_TEST_URL = 'http://api.myip.com';
 
 const TEST_TIMEOUT = 30000; // 30 seconds
@@ -65,19 +63,30 @@ class SpeedTester {
 
   private async checkProxyConnection(): Promise<boolean> {
     try {
+      logger.log(`Checking proxy connection to ${PROXY_PROTOCOL}://${PROXY_HOST}:${PROXY_PORT}...`);
       const start = Date.now();
       await axios.get(PING_TEST_URL, {
         proxy: this.getProxyConfig(),
         timeout: 10000
       });
+      const duration = Date.now() - start;
+      logger.log(`Proxy connection successful! Response time: ${duration}ms`);
       return true;
-    } catch (error) {
+    } catch (error: any) {
+      logger.log(`Proxy connection check failed: ${error.message}`);
+      logger.log(`Error details: ${JSON.stringify({
+        code: error.code,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      })}`);
       return false;
     }
   }
 
   private async measurePing(): Promise<{ ping: number; jitter: number }> {
     logger.log('Measuring ping...');
+    logger.log(`Using proxy: ${PROXY_PROTOCOL}://${PROXY_HOST}:${PROXY_PORT}`);
+    logger.log(`Ping test URL: ${PING_TEST_URL}`);
     this.updateResult({ phase: 'Measuring Ping', progress: 10 });
 
     const pings: number[] = [];
@@ -86,6 +95,7 @@ class SpeedTester {
     for (let i = 0; i < pingCount; i++) {
       try {
         const start = Date.now();
+        logger.log(`Ping ${i + 1}/${pingCount}: Starting request to ${PING_TEST_URL}...`);
         await axios.get(PING_TEST_URL, {
           proxy: this.getProxyConfig(),
           timeout: 10000
@@ -95,6 +105,11 @@ class SpeedTester {
         logger.log(`Ping ${i + 1}/${pingCount}: ${ping}ms`);
       } catch (error: any) {
         logger.log(`Ping ${i + 1}/${pingCount} failed: ${error.message}`);
+        logger.log(`Error details: ${JSON.stringify({
+          code: error.code,
+          status: error.response?.status,
+          statusText: error.response?.statusText
+        })}`);
         pings.push(9999); // Use high value for failed pings
       }
     }
@@ -116,6 +131,7 @@ class SpeedTester {
 
   private async measureDownloadSpeed(): Promise<number> {
     logger.log('Measuring download speed...');
+    logger.log(`Download test URLs: ${DOWNLOAD_TEST_URLS.join(', ')}`);
     this.updateResult({ phase: 'Measuring Download Speed', progress: 30 });
 
     let totalBytes = 0;
@@ -127,6 +143,7 @@ class SpeedTester {
       const progressStart = 30 + (i * 20);
       
       try {
+        logger.log(`Download test ${i + 1}: Starting request to ${url}...`);
         const startTime = Date.now();
         let downloadedBytes = 0;
 
@@ -153,9 +170,15 @@ class SpeedTester {
         const speedMbps = (bytes * 8) / (duration * 1000000);
         testResults.push(speedMbps);
         
-        logger.log(`Download test ${i + 1}: ${speedMbps.toFixed(2)} Mbps`);
+        logger.log(`Download test ${i + 1}: ${speedMbps.toFixed(2)} Mbps (${bytes} bytes in ${duration.toFixed(2)}s)`);
       } catch (error: any) {
         logger.log(`Download test ${i + 1} failed: ${error.message}`);
+        logger.log(`Error details: ${JSON.stringify({
+          code: error.code,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          url: url
+        })}`);
       }
     }
 
@@ -170,6 +193,7 @@ class SpeedTester {
 
   private async measureUploadSpeed(): Promise<number> {
     logger.log('Measuring upload speed...');
+    logger.log(`Upload test URL: ${UPLOAD_TEST_URL}`);
     this.updateResult({ phase: 'Measuring Upload Speed', progress: 70 });
 
     const uploadSizes = [1000000, 2000000, 5000000]; // 1MB, 2MB, 5MB
@@ -183,6 +207,7 @@ class SpeedTester {
         // Generate random data
         const data = Buffer.alloc(size, Math.random().toString());
         
+        logger.log(`Upload test ${i + 1}: Starting upload of ${size} bytes to ${UPLOAD_TEST_URL}...`);
         const startTime = Date.now();
         
         await axios.post(UPLOAD_TEST_URL, data, {
@@ -206,9 +231,15 @@ class SpeedTester {
         const speedMbps = (size * 8) / (duration * 1000000);
         testResults.push(speedMbps);
         
-        logger.log(`Upload test ${i + 1}: ${speedMbps.toFixed(2)} Mbps`);
+        logger.log(`Upload test ${i + 1}: ${speedMbps.toFixed(2)} Mbps (${size} bytes in ${duration.toFixed(2)}s)`);
       } catch (error: any) {
         logger.log(`Upload test ${i + 1} failed: ${error.message}`);
+        logger.log(`Error details: ${JSON.stringify({
+          code: error.code,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          url: UPLOAD_TEST_URL
+        })}`);
       }
     }
 
@@ -229,6 +260,22 @@ class SpeedTester {
     // Check if Xray is running
     if (xrayManager.getStatus() !== 'Running') {
       throw new Error('Xray is not running. Please connect first.');
+    }
+
+    logger.log('=== SPEED TEST DIAGNOSTICS ===');
+    logger.log(`Xray Status: ${xrayManager.getStatus()}`);
+    logger.log(`Proxy Configuration: ${PROXY_PROTOCOL}://${PROXY_HOST}:${PROXY_PORT}`);
+
+    // Test direct connection (bypass proxy) to check if network is working
+    logger.log('Testing direct network connection (bypassing proxy)...');
+    try {
+      const directStart = Date.now();
+      await axios.get(PING_TEST_URL, { timeout: 10000 });
+      const directDuration = Date.now() - directStart;
+      logger.log(`Direct connection successful! Response time: ${directDuration}ms`);
+    } catch (error: any) {
+      logger.log(`Direct connection failed: ${error.message}`);
+      logger.log(`This indicates a network connectivity issue independent of the proxy.`);
     }
 
     // Check if proxy is accessible
