@@ -307,8 +307,7 @@ async function updateLatencyResults() {
                     </div>
                     <div class="accordion-actions">
                         <button class="test-btn" onclick="event.stopPropagation(); testSingleConfig('${id}')">Test</button>
-                        <button class="switch-btn" onclick="event.stopPropagation(); switchConfig('${id}')">Switch</button>
-                        <button class="add-connection-btn" onclick="event.stopPropagation(); addToConnections('${id}')">Add to Connections</button>
+                        <button class="add-connection-btn" onclick="event.stopPropagation(); addToConnections('${id}')">Add</button>
                         <button class="delete-btn" onclick="event.stopPropagation(); deleteConfig('${id}')">Delete</button>
                     </div>
                 </div>
@@ -348,21 +347,6 @@ function toggleAccordion(name) {
             }
         }
     });
-}
-
-async function switchConfig(id) {
-    try {
-        const response = await authenticatedFetch('/api/switch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id })
-        });
-        const data = await response.json();
-        // alert(data.message || data.error);
-        updateStatus();
-    } catch (error) {
-        console.error('Failed to switch config:', error);
-    }
 }
 
 async function addToConnections(id) {

@@ -405,12 +405,27 @@ class ConnectionManager {
     // Deep clone config
     const tempConfig = JSON.parse(JSON.stringify(connection.config));
 
-    // Modify the first inbound port
+    // Validate inbounds exist
     if (!tempConfig.inbounds || tempConfig.inbounds.length === 0) {
       throw new Error('No inbounds found in config');
     }
 
-    tempConfig.inbounds[0].port = connection.port;
+    // Calculate the connection index to determine port offset
+    const connectionIndex = this.connections.findIndex(c => c.id === connection.id);
+    if (connectionIndex === -1) {
+      throw new Error(`Connection "${connection.id}" not found in connections list`);
+    }
+
+    // Update ALL inbounds' ports based on connection index
+    tempConfig.inbounds.forEach((inbound: any, index: number) => {
+      // Get the original port from the base config
+      const originalPort = connection.config.inbounds[index].port;
+      
+      // Calculate the new port by adding the connection index offset
+      // This preserves the port spacing between different inbounds
+      const portOffset = connectionIndex;
+      inbound.port = originalPort + portOffset;
+    });
 
     // Set log level
     if (!tempConfig.log) tempConfig.log = {};

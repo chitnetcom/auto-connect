@@ -215,7 +215,8 @@ class SpeedTester {
     logger.log(`Upload test URL: ${UPLOAD_TEST_URL}`);
     this.updateResult({ phase: 'Measuring Upload Speed', progress: 70 });
 
-    const uploadSizes = [1000000, 2000000, 5000000]; // 1MB, 2MB, 5MB
+    // const uploadSizes = [1000000, 2000000, 5000000]; // 1MB, 2MB, 5MB
+    const uploadSizes = [1000000, 2000000]; // 1MB, 2MB
     const testResults: number[] = [];
 
     for (let i = 0; i < uploadSizes.length; i++) {
