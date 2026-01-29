@@ -315,7 +315,7 @@ async function updateLatencyResults() {
             const id = item.name;
             const result = data.results.find(r => r.id === id);
             const latencyText = result ? (result.latency === 'FAILED' ? 'FAILED' : result.latency + ' ms') : '-';
-            const latencyClass = result ? (result.latency === 'FAILED' ? 'bad' : (result.latency < 500 ? 'good' : '')) : '';
+            const latencyClass = result ? (result.latency === 'FAILED' ? 'bad' : (result.latency < 3000 ? 'good' : '')) : '';
 
             const itemEl = document.createElement('div');
             itemEl.className = `accordion-item ${openItems.includes(id) ? 'active' : ''}`;
@@ -657,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Polling
 setInterval(updateStatus, 2000);
 setInterval(updateLogs, 3000);
-setInterval(updateLatencyResults, 10000); // Slower polling for configs to avoid editor flickering
+setInterval(updateLatencyResults, 1000); // Slower polling for configs to avoid editor flickering
 
 // Initial load
 updateStatus();

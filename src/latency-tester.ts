@@ -8,6 +8,7 @@ import { xrayManager } from "./xray-manager";
 // const TEST_URL = "http://cp.cloudflere.com/generate_204";
 // const TEST_URL = "http://www.google.com/generate_204";
 const TEST_URL = "http://api.myip.com";
+// const TEST_URL = "http://digikala.com";
 const TEST_TIMEOUT = 12000;
 const START_PORT = 10000;
 
@@ -146,7 +147,7 @@ class LatencyTester {
          testProcess = spawn("xray", ["run", "-c", tempConfigPath]);
 
          // 4. Wait for initialization
-         await new Promise((resolve) => setTimeout(resolve, 700));
+         await new Promise((resolve) => setTimeout(resolve, 1000));
 
          // 5. Measure latency
          const start = Date.now();

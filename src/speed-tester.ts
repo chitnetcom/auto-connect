@@ -9,13 +9,13 @@ const PROXY_PROTOCOL = 'http';
 // Test URLs for speed testing (using LibreSpeed servers)
 const DOWNLOAD_TEST_URLS = [
   'http://speedtest.ams1.nl.leaseweb.net/10mb.bin',
-  'http://proof.ovh.net/files/10Mb.dat'
+  // 'http://proof.ovh.net/files/10Mb.dat'
 ];
 
 const UPLOAD_TEST_URL = 'http://httpbin.org/post';
 const PING_TEST_URL = 'http://api.myip.com';
 
-const TEST_TIMEOUT = 30000; // 30 seconds
+const TEST_TIMEOUT = 50000; // 50 seconds
 
 export interface SpeedTestResult {
   downloadSpeed: number; // in Mbps
