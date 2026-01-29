@@ -11,9 +11,7 @@
     <div class="container">
         <header>
             <h1>Xray Auto-Connect</h1>
-            <div class="status-badge">
-                Status: <span id="status" class="status-stopped">Stopped</span>
-            </div>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
         </header>
         
         <nav class="tabs">
@@ -25,29 +23,32 @@
 
         <main class="tab-content">
             <section id="status-tab" class="tab-pane active">
-                <div class="status-card">
-                    <div class="status-info">
-                        <div class="info-item">
-                            <label>Current Status:</label>
-                            <span id="status-display" class="status-stopped">Stopped</span>
+                <div class="vpn-main-panel">
+                    <div class="connection-button-container">
+                        <button id="toggleServiceBtn" class="connection-button">
+                            <span class="button-icon"></span>
+                            <span class="button-text">Connect</span>
+                            <span class="connection-timer" id="connectionTimer"></span>
+                        </button>
+                    </div>
+                    
+                    <div class="connection-info">
+                        <div class="info-row">
+                            <span class="info-label">Status</span>
+                            <span id="status-display" class="info-value status-stopped">Disconnected</span>
                         </div>
-                        <div class="info-item">
-                            <label>Active Config:</label>
-                            <span id="active-config-name">-</span>
+                        <div class="info-row">
+                            <span class="info-label">Active Config</span>
+                            <span id="active-config-name" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Latency</span>
+                            <span id="current-latency" class="info-value">-</span>
                         </div>
                     </div>
-                    <div class="status-actions">
-                        <button id="toggleServiceBtn" class="btn-success">Start Service</button>
-                    </div>
-                </div>
-                
-                <div class="quick-stats">
-                    <div class="stat-item">
-                        <label>Latency</label>
-                        <span id="current-latency">-</span>
-                    </div>
-                    <div class="stat-item">
-                        <button id="testLatencyBtnQuick" class="btn-primary">Test Latency</button>
+                    
+                    <div class="quick-actions">
+                        <button id="testLatencyBtnQuick" class="action-btn">Test Latency</button>
                     </div>
                 </div>
             </section>

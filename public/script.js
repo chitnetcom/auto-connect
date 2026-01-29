@@ -1,8 +1,8 @@
-const statusEl = document.getElementById('status');
 const statusDisplay = document.getElementById('status-display');
 const activeConfigNameEl = document.getElementById('active-config-name');
 const currentLatencyEl = document.getElementById('current-latency');
 const toggleServiceBtn = document.getElementById('toggleServiceBtn');
+const connectionTimerEl = document.getElementById('connectionTimer');
 const logViewer = document.getElementById('logViewer');
 const testLatencyBtn = document.getElementById('testLatencyBtn');
 const testLatencyBtnQuick = document.getElementById('testLatencyBtnQuick');
@@ -10,11 +10,14 @@ const testStatus = document.getElementById('testStatus');
 const accordionContainer = document.getElementById('accordionContainer');
 const newConfigNameInput = document.getElementById('newConfigName');
 const addConfigBtn = document.getElementById('addConfigBtn');
+const logoutBtn = document.getElementById('logoutBtn');
 
 let mainEditor;
 let activeConfigName = null;
 let currentStatus = 'Stopped';
 let configEditors = {}; // Store editor instances for accordion items
+let connectionStartTime = null;
+let connectionTimerInterval = null;
 
 // Authentication functions
 function getAuthToken() {
@@ -59,20 +62,11 @@ function checkAuthentication() {
 
 // Add logout button to header
 function addLogoutButton() {
-    const header = document.querySelector('header');
-    if (header && !document.getElementById('logoutBtn')) {
-        const logoutBtn = document.createElement('button');
-        logoutBtn.id = 'logoutBtn';
-        logoutBtn.className = 'btn-danger';
-        logoutBtn.textContent = 'Logout';
-        logoutBtn.style.marginLeft = 'auto';
-        logoutBtn.style.padding = '8px 16px';
-        logoutBtn.style.fontSize = '14px';
+    if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
             localStorage.removeItem('authToken');
             window.location.href = '/login.html';
         });
-        header.appendChild(logoutBtn);
     }
 }
 
@@ -118,39 +112,97 @@ require(['vs/editor/editor.main'], function () {
     });
 });
 
+// Connection timer functions
+function startConnectionTimer() {
+    connectionStartTime = Date.now();
+    if (connectionTimerInterval) {
+        clearInterval(connectionTimerInterval);
+    }
+    connectionTimerInterval = setInterval(updateConnectionTimer, 1000);
+    updateConnectionTimer();
+}
+
+function stopConnectionTimer() {
+    if (connectionTimerInterval) {
+        clearInterval(connectionTimerInterval);
+        connectionTimerInterval = null;
+    }
+    connectionStartTime = null;
+    if (connectionTimerEl) {
+        connectionTimerEl.textContent = '';
+    }
+}
+
+function updateConnectionTimer() {
+    if (!connectionStartTime) return;
+    
+    const elapsed = Date.now() - connectionStartTime;
+    const hours = Math.floor(elapsed / 3600000);
+    const minutes = Math.floor((elapsed % 3600000) / 60000);
+    const seconds = Math.floor((elapsed % 60000) / 1000);
+    
+    let timeString = '';
+    if (hours > 0) {
+        timeString += `${hours}:`;
+    }
+    timeString += `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    
+    if (connectionTimerEl) {
+        connectionTimerEl.textContent = timeString;
+    }
+}
+
 async function updateStatus() {
     try {
         const response = await authenticatedFetch('/api/status');
         const data = await response.json();
         
+        const previousStatus = currentStatus;
         currentStatus = data.status;
         const statusClass = 'status-' + currentStatus.toLowerCase();
         
-        statusEl.textContent = currentStatus;
-        statusEl.className = statusClass;
-        
         if (statusDisplay) {
-            statusDisplay.textContent = currentStatus;
+            statusDisplay.textContent = currentStatus === 'Running' ? 'Connected' : 'Disconnected';
             statusDisplay.className = statusClass;
         }
 
         if (toggleServiceBtn) {
+            const buttonText = toggleServiceBtn.querySelector('.button-text');
+            const buttonIcon = toggleServiceBtn.querySelector('.button-icon');
+            
+            // Remove all state classes
+            toggleServiceBtn.classList.remove('connected', 'connecting');
+            
             if (currentStatus === 'Running') {
-                toggleServiceBtn.textContent = 'Stop Service';
-                toggleServiceBtn.className = 'btn-danger';
-            } else if (currentStatus === 'Starting') {
-                toggleServiceBtn.textContent = 'Starting...';
-                toggleServiceBtn.className = 'btn-warning';
-                toggleServiceBtn.disabled = true;
-            } else {
-                toggleServiceBtn.textContent = 'Start Service';
-                toggleServiceBtn.className = 'btn-success';
+                if (buttonText) buttonText.textContent = 'Disconnect';
+                if (buttonIcon) buttonIcon.textContent = '⏹';
+                toggleServiceBtn.classList.add('connected');
                 toggleServiceBtn.disabled = false;
+                
+                // Start timer if not already running
+                if (previousStatus !== 'Running') {
+                    startConnectionTimer();
+                }
+            } else if (currentStatus === 'Starting') {
+                if (buttonText) buttonText.textContent = 'Connecting...';
+                if (buttonIcon) buttonIcon.textContent = '⏳';
+                toggleServiceBtn.classList.add('connecting');
+                toggleServiceBtn.disabled = true;
+                
+                // Stop timer when starting
+                stopConnectionTimer();
+            } else {
+                if (buttonText) buttonText.textContent = 'Connect';
+                if (buttonIcon) buttonIcon.textContent = '▶';
+                toggleServiceBtn.disabled = false;
+                
+                // Stop timer when stopped
+                stopConnectionTimer();
             }
         }
 
         if (activeConfigNameEl) {
-            activeConfigNameEl.textContent = data.activeConfig || 'None';
+            activeConfigNameEl.textContent = data.activeConfig || '-';
         }
         
         if (activeConfigName !== data.activeConfig) {
@@ -177,6 +229,7 @@ toggleServiceBtn.addEventListener('click', async () => {
     try {
         const endpoint = currentStatus === 'Running' ? '/api/stop' : '/api/start';
         await authenticatedFetch(endpoint, { method: 'POST' });
+        // Update status immediately for better UX
         updateStatus();
     } catch (error) {
         console.error('Failed to toggle service:', error);
