@@ -315,7 +315,7 @@ async function updateLatencyResults() {
             const id = item.name;
             const result = data.results.find(r => r.id === id);
             const latencyText = result ? (result.latency === 'FAILED' ? 'FAILED' : result.latency + ' ms') : '-';
-            const latencyClass = result ? (result.latency === 'FAILED' ? 'bad' : (result.latency < 3000 ? 'good' : '')) : '';
+            const latencyClass = result ? (result.latency === 'FAILED' ? 'bad' : (result.latency < 5000 ? 'good' : '')) : '';
 
             const itemEl = document.createElement('div');
             itemEl.className = `accordion-item ${openItems.includes(id) ? 'active' : ''}`;
