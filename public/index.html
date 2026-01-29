@@ -17,6 +17,7 @@
         <nav class="tabs">
             <button class="tab-btn active" data-tab="status-tab">Status</button>
             <button class="tab-btn" data-tab="configs-tab">Configs</button>
+            <button class="tab-btn" data-tab="speed-test-tab">Speed Test</button>
             <button class="tab-btn" data-tab="add-config-tab">Add Config</button>
             <button class="tab-btn" data-tab="logs-tab">Logs</button>
         </nav>
@@ -63,6 +64,80 @@
                 </div>
                 <div id="accordionContainer" class="accordion">
                     <!-- Accordion items will be loaded here -->
+                </div>
+            </section>
+
+            <section id="speed-test-tab" class="tab-pane">
+                <div class="section-header">
+                    <h2>Speed Test</h2>
+                </div>
+                <div class="speed-test-container">
+                    <div class="speed-test-controls">
+                        <button id="startSpeedTestBtn" class="btn-primary speed-test-btn">Start Speed Test</button>
+                        <button id="resetSpeedTestBtn" class="btn-secondary speed-test-btn">Reset</button>
+                    </div>
+                    
+                    <div class="speed-test-status">
+                        <div class="status-phase" id="speedTestPhase">Ready</div>
+                        <div class="status-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="speedTestProgress"></div>
+                            </div>
+                            <div class="progress-text" id="speedTestProgressText">0%</div>
+                        </div>
+                    </div>
+
+                    <div class="speed-test-results">
+                        <div class="speed-metric">
+                            <div class="metric-icon download-icon">↓</div>
+                            <div class="metric-info">
+                                <div class="metric-label">Download</div>
+                                <div class="metric-value" id="downloadSpeed">0.00</div>
+                                <div class="metric-unit">Mbps</div>
+                            </div>
+                            <div class="metric-chart">
+                                <canvas id="downloadChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="speed-metric">
+                            <div class="metric-icon upload-icon">↑</div>
+                            <div class="metric-info">
+                                <div class="metric-label">Upload</div>
+                                <div class="metric-value" id="uploadSpeed">0.00</div>
+                                <div class="metric-unit">Mbps</div>
+                            </div>
+                            <div class="metric-chart">
+                                <canvas id="uploadChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="speed-metric">
+                            <div class="metric-icon ping-icon">⚡</div>
+                            <div class="metric-info">
+                                <div class="metric-label">Ping</div>
+                                <div class="metric-value" id="pingValue">0</div>
+                                <div class="metric-unit">ms</div>
+                            </div>
+                            <div class="metric-chart">
+                                <canvas id="pingChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="speed-metric">
+                            <div class="metric-icon jitter-icon">≈</div>
+                            <div class="metric-info">
+                                <div class="metric-label">Jitter</div>
+                                <div class="metric-value" id="jitterValue">0</div>
+                                <div class="metric-unit">ms</div>
+                            </div>
+                            <div class="metric-chart">
+                                <canvas id="jitterChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="speed-test-error" id="speedTestError"></div>
                 </div>
             </section>
 

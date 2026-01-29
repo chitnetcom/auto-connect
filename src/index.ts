@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { xrayManager } from './xray-manager';
 import { logger } from './logger';
 import { latencyTester } from './latency-tester';
+import { speedTester } from './speed-tester';
 import { authMiddleware, createSession, generateSessionToken } from './auth';
 
 dotenv.config();
@@ -132,6 +133,29 @@ app.get('/api/test-results', (req, res) => {
     results: latencyTester.getResults(),
     isTesting: latencyTester.getIsTesting()
   });
+});
+
+// Speed Test endpoints
+app.post('/api/speed-test', async (req, res) => {
+  try {
+    // Run speed test in background
+    speedTester.runSpeedTest().catch(err => logger.log(`Speed test error: ${err.message}`));
+    res.json({ message: 'Speed test started' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/speed-test', (req, res) => {
+  res.json({
+    result: speedTester.getResult(),
+    isTesting: speedTester.getIsTesting()
+  });
+});
+
+app.post('/api/speed-test/reset', (req, res) => {
+  speedTester.reset();
+  res.json({ message: 'Speed test reset' });
 });
 
 app.post('/api/switch', async (req, res) => {

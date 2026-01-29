@@ -450,6 +450,210 @@ async function testSingleConfig(id) {
 testLatencyBtn.addEventListener('click', runLatencyTest);
 if (testLatencyBtnQuick) testLatencyBtnQuick.addEventListener('click', runLatencyTest);
 
+// Speed Test functionality
+const startSpeedTestBtn = document.getElementById('startSpeedTestBtn');
+const resetSpeedTestBtn = document.getElementById('resetSpeedTestBtn');
+const speedTestPhase = document.getElementById('speedTestPhase');
+const speedTestProgress = document.getElementById('speedTestProgress');
+const speedTestProgressText = document.getElementById('speedTestProgressText');
+const downloadSpeedEl = document.getElementById('downloadSpeed');
+const uploadSpeedEl = document.getElementById('uploadSpeed');
+const pingValueEl = document.getElementById('pingValue');
+const jitterValueEl = document.getElementById('jitterValue');
+const speedTestError = document.getElementById('speedTestError');
+
+let speedTestInterval = null;
+let speedTestCharts = {};
+
+// Initialize speed test charts
+function initSpeedTestCharts() {
+    const chartConfigs = [
+        { id: 'downloadChart', color: '#3b82f6' },
+        { id: 'uploadChart', color: '#8b5cf6' },
+        { id: 'pingChart', color: '#10b981' },
+        { id: 'jitterChart', color: '#f59e0b' }
+    ];
+
+    chartConfigs.forEach(config => {
+        const canvas = document.getElementById(config.id);
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            speedTestCharts[config.id] = {
+                ctx,
+                color: config.color,
+                values: [],
+                maxValue: 100
+            };
+            drawChart(config.id);
+        }
+    });
+}
+
+function drawChart(chartId) {
+    const chart = speedTestCharts[chartId];
+    if (!chart) return;
+
+    const canvas = document.getElementById(chartId);
+    const ctx = chart.ctx;
+    const width = canvas.width = canvas.offsetWidth * 2;
+    const height = canvas.height = canvas.offsetHeight * 2;
+    const padding = 10;
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.scale(2, 2);
+
+    // Draw background
+    ctx.fillStyle = '#f3f4f6';
+    ctx.fillRect(0, 0, width / 2, height / 2);
+
+    // Draw bars
+    const barWidth = (width / 2 - padding * 2) / Math.max(chart.values.length, 1);
+    const maxVal = Math.max(...chart.values, chart.maxValue);
+
+    chart.values.forEach((value, index) => {
+        const barHeight = (value / maxVal) * (height / 2 - padding * 2);
+        const x = padding + index * barWidth;
+        const y = height / 2 - padding - barHeight;
+
+        // Draw bar with gradient
+        const gradient = ctx.createLinearGradient(x, y, x, height / 2 - padding);
+        gradient.addColorStop(0, chart.color);
+        gradient.addColorStop(1, chart.color + '80');
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x, y, barWidth - 2, barHeight);
+    });
+}
+
+function updateChart(chartId, value) {
+    const chart = speedTestCharts[chartId];
+    if (!chart) return;
+
+    chart.values.push(value);
+    if (chart.values.length > 10) {
+        chart.values.shift();
+    }
+    drawChart(chartId);
+}
+
+function resetCharts() {
+    Object.keys(speedTestCharts).forEach(chartId => {
+        speedTestCharts[chartId].values = [];
+        drawChart(chartId);
+    });
+}
+
+async function startSpeedTest() {
+    try {
+        // Check if Xray is running
+        const statusResponse = await authenticatedFetch('/api/status');
+        const statusData = await statusResponse.json();
+        
+        if (statusData.status !== 'Running') {
+            showError('Please connect to VPN first before running speed test.');
+            return;
+        }
+
+        // Reset previous results
+        resetSpeedTestUI();
+        resetCharts();
+
+        // Start the test
+        await authenticatedFetch('/api/speed-test', { method: 'POST' });
+
+        // Start polling for results
+        startSpeedTestBtn.disabled = true;
+        resetSpeedTestBtn.disabled = true;
+        speedTestError.classList.remove('show');
+
+        if (speedTestInterval) clearInterval(speedTestInterval);
+        speedTestInterval = setInterval(updateSpeedTestResults, 500);
+    } catch (error) {
+        console.error('Failed to start speed test:', error);
+        showError(error.message || 'Failed to start speed test');
+    }
+}
+
+async function updateSpeedTestResults() {
+    try {
+        const response = await authenticatedFetch('/api/speed-test');
+        const data = await response.json();
+        const result = data.result;
+
+        // Update phase and progress
+        if (speedTestPhase) speedTestPhase.textContent = result.phase;
+        if (speedTestProgress) speedTestProgress.style.width = result.progress + '%';
+        if (speedTestProgressText) speedTestProgressText.textContent = Math.round(result.progress) + '%';
+
+        // Update metrics
+        if (downloadSpeedEl) downloadSpeedEl.textContent = result.downloadSpeed.toFixed(2);
+        if (uploadSpeedEl) uploadSpeedEl.textContent = result.uploadSpeed.toFixed(2);
+        if (pingValueEl) pingValueEl.textContent = result.ping.toFixed(0);
+        if (jitterValueEl) jitterValueEl.textContent = result.jitter.toFixed(0);
+
+        // Update charts with current values
+        if (result.downloadSpeed > 0) updateChart('downloadChart', result.downloadSpeed);
+        if (result.uploadSpeed > 0) updateChart('uploadChart', result.uploadSpeed);
+        if (result.ping > 0) updateChart('pingChart', result.ping);
+        if (result.jitter > 0) updateChart('jitterChart', result.jitter);
+
+        // Check if test is complete or failed
+        if (result.status === 'completed' || result.status === 'failed') {
+            clearInterval(speedTestInterval);
+            speedTestInterval = null;
+            startSpeedTestBtn.disabled = false;
+            resetSpeedTestBtn.disabled = false;
+
+            if (result.status === 'failed' && result.error) {
+                showError(result.error);
+            }
+        }
+    } catch (error) {
+        console.error('Failed to fetch speed test results:', error);
+    }
+}
+
+function resetSpeedTestUI() {
+    if (speedTestPhase) speedTestPhase.textContent = 'Ready';
+    if (speedTestProgress) speedTestProgress.style.width = '0%';
+    if (speedTestProgressText) speedTestProgressText.textContent = '0%';
+    if (downloadSpeedEl) downloadSpeedEl.textContent = '0.00';
+    if (uploadSpeedEl) uploadSpeedEl.textContent = '0.00';
+    if (pingValueEl) pingValueEl.textContent = '0';
+    if (jitterValueEl) jitterValueEl.textContent = '0';
+    speedTestError.classList.remove('show');
+}
+
+async function resetSpeedTest() {
+    try {
+        await authenticatedFetch('/api/speed-test/reset', { method: 'POST' });
+        resetSpeedTestUI();
+        resetCharts();
+    } catch (error) {
+        console.error('Failed to reset speed test:', error);
+    }
+}
+
+function showError(message) {
+    if (speedTestError) {
+        speedTestError.textContent = message;
+        speedTestError.classList.add('show');
+    }
+}
+
+// Speed test event listeners
+if (startSpeedTestBtn) {
+    startSpeedTestBtn.addEventListener('click', startSpeedTest);
+}
+if (resetSpeedTestBtn) {
+    resetSpeedTestBtn.addEventListener('click', resetSpeedTest);
+}
+
+// Initialize charts when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    initSpeedTestCharts();
+});
+
 // Polling
 setInterval(updateStatus, 2000);
 setInterval(updateLogs, 3000);
