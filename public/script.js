@@ -657,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Polling
 setInterval(updateStatus, 2000);
 setInterval(updateLogs, 3000);
-setInterval(updateLatencyResults, 1000); // Slower polling for configs to avoid editor flickering
+setInterval(updateLatencyResults, 10000); // Slower polling for configs to avoid editor flickering
 
 // Initial load
 updateStatus();
