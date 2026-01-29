@@ -16,44 +16,66 @@
         
         <nav class="tabs">
             <button class="tab-btn active" data-tab="status-tab">Status</button>
+            <button class="tab-btn" data-tab="connections-tab">Connections</button>
             <button class="tab-btn" data-tab="configs-tab">Configs</button>
             <button class="tab-btn" data-tab="speed-test-tab">Speed Test</button>
             <button class="tab-btn" data-tab="add-config-tab">Add Config</button>
             <button class="tab-btn" data-tab="logs-tab">Logs</button>
         </nav>
-
+ 
         <main class="tab-content">
             <section id="status-tab" class="tab-pane active">
-                <div class="vpn-main-panel">
-                    <div class="connection-button-container">
-                        <button id="toggleServiceBtn" class="connection-button">
-                            <span class="button-icon"></span>
-                            <span class="button-text">Connect</span>
-                            <span class="connection-timer" id="connectionTimer"></span>
-                        </button>
-                    </div>
-                    
-                    <div class="connection-info">
-                        <div class="info-row">
-                            <span class="info-label">Status</span>
-                            <span id="status-display" class="info-value status-stopped">Disconnected</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Active Config</span>
-                            <span id="active-config-name" class="info-value">-</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Latency</span>
-                            <span id="current-latency" class="info-value">-</span>
+                <div class="status-summary">
+                    <div class="summary-card">
+                        <div class="summary-icon">📊</div>
+                        <div class="summary-info">
+                            <div class="summary-label">Total Connections</div>
+                            <div class="summary-value" id="totalConnections">0</div>
                         </div>
                     </div>
-                    
-                    <div class="quick-actions">
-                        <button id="testLatencyBtnQuick" class="action-btn">Test Latency</button>
+                    <div class="summary-card">
+                        <div class="summary-icon running-icon">🟢</div>
+                        <div class="summary-info">
+                            <div class="summary-label">Running</div>
+                            <div class="summary-value" id="runningConnections">0</div>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon stopped-icon">🔴</div>
+                        <div class="summary-info">
+                            <div class="summary-label">Stopped</div>
+                            <div class="summary-value" id="stoppedConnections">0</div>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon error-icon">⚠️</div>
+                        <div class="summary-info">
+                            <div class="summary-label">Errors</div>
+                            <div class="summary-value" id="errorConnections">0</div>
+                        </div>
                     </div>
                 </div>
+                <div class="status-actions">
+                    <button id="goToConnectionsBtn" class="action-btn">Manage Connections</button>
+                </div>
             </section>
-
+ 
+            <section id="connections-tab" class="tab-pane">
+                <div class="section-header">
+                    <h2>Connection List</h2>
+                    <div class="header-actions">
+                        <button id="startAllConnectionsBtn" class="btn-success">Start All</button>
+                        <button id="stopAllConnectionsBtn" class="btn-danger">Stop All</button>
+                    </div>
+                </div>
+                <div id="connectionsList" class="connections-list">
+                    <!-- Connection cards will be loaded here -->
+                </div>
+                <div id="noConnectionsMessage" class="no-connections-message" style="display: none;">
+                    <p>No connections in list. Add configs from Configs tab.</p>
+                </div>
+            </section>
+ 
             <section id="configs-tab" class="tab-pane">
                 <div class="section-header">
                     <h2>Manage Configs</h2>
@@ -66,13 +88,19 @@
                     <!-- Accordion items will be loaded here -->
                 </div>
             </section>
-
+ 
             <section id="speed-test-tab" class="tab-pane">
                 <div class="section-header">
                     <h2>Speed Test</h2>
                 </div>
                 <div class="speed-test-container">
                     <div class="speed-test-controls">
+                        <div class="connection-selector">
+                            <label for="speedTestConnection">Test Connection</label>
+                            <select id="speedTestConnection">
+                                <option value="">Select a connection...</option>
+                            </select>
+                        </div>
                         <button id="startSpeedTestBtn" class="btn-primary speed-test-btn">Start Speed Test</button>
                         <button id="resetSpeedTestBtn" class="btn-secondary speed-test-btn">Reset</button>
                     </div>
@@ -86,7 +114,7 @@
                             <div class="progress-text" id="speedTestProgressText">0%</div>
                         </div>
                     </div>
-
+ 
                     <div class="speed-test-results">
                         <div class="speed-metric">
                             <div class="metric-icon download-icon">↓</div>
@@ -99,7 +127,7 @@
                                 <canvas id="downloadChart"></canvas>
                             </div>
                         </div>
-
+ 
                         <div class="speed-metric">
                             <div class="metric-icon upload-icon">↑</div>
                             <div class="metric-info">
@@ -111,7 +139,7 @@
                                 <canvas id="uploadChart"></canvas>
                             </div>
                         </div>
-
+ 
                         <div class="speed-metric">
                             <div class="metric-icon ping-icon">⚡</div>
                             <div class="metric-info">
@@ -123,7 +151,7 @@
                                 <canvas id="pingChart"></canvas>
                             </div>
                         </div>
-
+ 
                         <div class="speed-metric">
                             <div class="metric-icon jitter-icon">≈</div>
                             <div class="metric-info">
@@ -136,11 +164,11 @@
                             </div>
                         </div>
                     </div>
-
+ 
                     <div class="speed-test-error" id="speedTestError"></div>
                 </div>
             </section>
-
+ 
             <section id="add-config-tab" class="tab-pane">
                 <h2>Add New Configuration</h2>
                 <div class="add-config-form">
@@ -155,7 +183,7 @@
                     <button id="addConfigBtn" class="btn-success">Add Config</button>
                 </div>
             </section>
-
+ 
             <section id="logs-tab" class="tab-pane">
                 <div class="section-header">
                     <h2>System Logs</h2>

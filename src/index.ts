@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
 import { xrayManager } from './xray-manager';
+import { connectionManager } from './connection-manager';
 import { logger } from './logger';
 import { latencyTester } from './latency-tester';
 import { speedTester } from './speed-tester';
@@ -138,8 +139,9 @@ app.get('/api/test-results', (req, res) => {
 // Speed Test endpoints
 app.post('/api/speed-test', async (req, res) => {
   try {
+    const { connectionId } = req.body;
     // Run speed test in background
-    speedTester.runSpeedTest().catch(err => logger.log(`Speed test error: ${err.message}`));
+    speedTester.runSpeedTest(connectionId).catch(err => logger.log(`Speed test error: ${err.message}`));
     res.json({ message: 'Speed test started' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -171,10 +173,137 @@ app.post('/api/switch', async (req, res) => {
   }
 });
 
+// ==================== Connection Management Endpoints ====================
+
+// Get all connections
+app.get('/api/connections', (req, res) => {
+  try {
+    const connections = connectionManager.getConnections();
+    res.json({ connections });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add a connection to the list
+app.post('/api/connections', async (req, res) => {
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Name is required' });
+  }
+  try {
+    await connectionManager.addConnection(name);
+    res.json({ message: `Connection "${name}" added` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Remove a connection from the list
+app.delete('/api/connections/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await connectionManager.removeConnection(id);
+    res.json({ message: `Connection "${id}" removed` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reorder connections
+app.put('/api/connections/reorder', async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids)) {
+    return res.status(400).json({ error: 'IDs array is required' });
+  }
+  try {
+    await connectionManager.reorderConnections(ids);
+    res.json({ message: 'Connections reordered' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Start a specific connection
+app.post('/api/connections/:id/start', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await connectionManager.startConnection(id);
+    res.json({ message: `Connection "${id}" started` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Stop a specific connection
+app.post('/api/connections/:id/stop', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await connectionManager.stopConnection(id);
+    res.json({ message: `Connection "${id}" stopped` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Restart a specific connection
+app.post('/api/connections/:id/restart', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await connectionManager.restartConnection(id);
+    res.json({ message: `Connection "${id}" restarted` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Start all connections
+app.post('/api/connections/start-all', async (req, res) => {
+  try {
+    await connectionManager.startAll();
+    res.json({ message: 'All connections started' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Stop all connections
+app.post('/api/connections/stop-all', async (req, res) => {
+  try {
+    await connectionManager.stopAll();
+    res.json({ message: 'All connections stopped' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get status of all connections
+app.get('/api/connections/status', (req, res) => {
+  try {
+    const statuses = connectionManager.getAllStatuses();
+    res.json({ statuses: Object.fromEntries(statuses) });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get status of a specific connection
+app.get('/api/connections/:id/status', (req, res) => {
+  const { id } = req.params;
+  try {
+    const status = connectionManager.getConnectionStatus(id);
+    res.json({ id, status });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);
   try {
     await xrayManager.migrateConfigs();
+    await connectionManager.loadState();
+    await connectionManager.migrateFromSingleConnection();
   } catch (err: any) {
     console.error('Migration failed:', err.message);
   }

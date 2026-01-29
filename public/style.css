@@ -344,6 +344,16 @@ header h1 {
     cursor: pointer;
 }
 
+.add-connection-btn {
+    background-color: #10b981;
+    color: white;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
 .delete-btn {
     background: var(--danger-color-light);
     color: var(--danger-color);
@@ -690,4 +700,283 @@ button:disabled {
 
 .speed-metric.testing {
     animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Connections List Styles */
+.connections-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.connection-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: all 0.3s ease;
+}
+
+.connection-card:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.connection-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.connection-card-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.connection-status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--neutral-color);
+}
+
+.connection-status-indicator.running {
+    background: var(--success-color);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.connection-status-indicator.starting {
+    background: var(--warning-color);
+}
+
+.connection-status-indicator.error {
+    background: var(--danger-color);
+}
+
+.connection-card-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.connection-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.connection-info-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.connection-info-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.connection-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.connection-action-btn {
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: none;
+}
+
+.connection-action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.connection-start-btn {
+    background: var(--success-color);
+    color: white;
+    border-color: var(--success-color);
+}
+
+.connection-stop-btn {
+    background: var(--danger-color);
+    color: white;
+    border-color: var(--danger-color);
+}
+
+.connection-restart-btn {
+    background: var(--warning-color);
+    color: white;
+    border-color: var(--warning-color);
+}
+
+.connection-remove-btn {
+    background: var(--bg-color);
+    color: var(--danger-color);
+    border-color: var(--border-color);
+}
+
+.connection-remove-btn:hover:not(:disabled) {
+    background: var(--danger-color-light);
+}
+
+.connection-error-message {
+    background: var(--danger-color-light);
+    color: var(--danger-color);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.no-connections-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
+
+.no-connections-message p {
+    margin: 0;
+    font-size: 0.9375rem;
+}
+
+.drag-handle {
+    cursor: grab;
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+    user-select: none;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.connection-card.dragging {
+    opacity: 0.5;
+    border-color: var(--primary-color);
+}
+
+.connection-card.drag-over {
+    border-color: var(--primary-color);
+    border-style: dashed;
+}
+
+/* Status Summary Styles */
+.status-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.summary-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+}
+
+.summary-card:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.summary-icon {
+    font-size: 2rem;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.summary-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.summary-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.summary-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.running-icon {
+    color: var(--success-color);
+}
+
+.stopped-icon {
+    color: var(--danger-color);
+}
+
+.error-icon {
+    color: var(--warning-color);
+}
+
+.status-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+}
+
+/* Connection Selector for Speed Test */
+.connection-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.connection-selector label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.connection-selector select {
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    background: var(--card-bg);
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.connection-selector select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.speed-test-controls {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap;
 }

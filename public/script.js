@@ -1,16 +1,26 @@
-const statusDisplay = document.getElementById('status-display');
-const activeConfigNameEl = document.getElementById('active-config-name');
-const currentLatencyEl = document.getElementById('current-latency');
-const toggleServiceBtn = document.getElementById('toggleServiceBtn');
-const connectionTimerEl = document.getElementById('connectionTimer');
+// Status summary elements
+const totalConnectionsEl = document.getElementById('totalConnections');
+const runningConnectionsEl = document.getElementById('runningConnections');
+const stoppedConnectionsEl = document.getElementById('stoppedConnections');
+const errorConnectionsEl = document.getElementById('errorConnections');
+const goToConnectionsBtn = document.getElementById('goToConnectionsBtn');
+
+// Speed test connection selector
+const speedTestConnectionSelect = document.getElementById('speedTestConnection');
+
 const logViewer = document.getElementById('logViewer');
 const testLatencyBtn = document.getElementById('testLatencyBtn');
-const testLatencyBtnQuick = document.getElementById('testLatencyBtnQuick');
 const testStatus = document.getElementById('testStatus');
 const accordionContainer = document.getElementById('accordionContainer');
 const newConfigNameInput = document.getElementById('newConfigName');
 const addConfigBtn = document.getElementById('addConfigBtn');
 const logoutBtn = document.getElementById('logoutBtn');
+
+// Connection management elements
+const connectionsList = document.getElementById('connectionsList');
+const startAllConnectionsBtn = document.getElementById('startAllConnectionsBtn');
+const stopAllConnectionsBtn = document.getElementById('stopAllConnectionsBtn');
+const noConnectionsMessage = document.getElementById('noConnectionsMessage');
 
 let mainEditor;
 let activeConfigName = null;
@@ -131,28 +141,21 @@ function stopConnectionTimer() {
         connectionTimerInterval = null;
     }
     connectionStartTime = null;
-    if (connectionTimerEl) {
-        connectionTimerEl.textContent = '';
-    }
 }
 
 function updateConnectionTimer() {
     if (!connectionStartTime) return;
-    
+
     const elapsed = Date.now() - connectionStartTime;
     const hours = Math.floor(elapsed / 3600000);
     const minutes = Math.floor((elapsed % 3600000) / 60000);
     const seconds = Math.floor((elapsed % 60000) / 1000);
-    
+
     let timeString = '';
     if (hours > 0) {
         timeString += `${hours}:`;
     }
     timeString += `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    
-    if (connectionTimerEl) {
-        connectionTimerEl.textContent = timeString;
-    }
 }
 
 async function updateStatus() {
@@ -163,62 +166,60 @@ async function updateStatus() {
         const previousStatus = currentStatus;
         currentStatus = data.status;
         const statusClass = 'status-' + currentStatus.toLowerCase();
-        
-        if (statusDisplay) {
-            statusDisplay.textContent = currentStatus === 'Running' ? 'Connected' : 'Disconnected';
-            statusDisplay.className = statusClass;
-        }
 
-        if (toggleServiceBtn) {
-            const buttonText = toggleServiceBtn.querySelector('.button-text');
-            const buttonIcon = toggleServiceBtn.querySelector('.button-icon');
-            
-            // Remove all state classes
-            toggleServiceBtn.classList.remove('connected', 'connecting');
-            
-            if (currentStatus === 'Running') {
-                if (buttonText) buttonText.textContent = 'Disconnect';
-                if (buttonIcon) buttonIcon.textContent = '⏹';
-                toggleServiceBtn.classList.add('connected');
-                toggleServiceBtn.disabled = false;
-                
-                // Use persisted connection start time if available
-                if (data.connectionStartTime && !connectionStartTime) {
-                    connectionStartTime = data.connectionStartTime;
-                }
-                
-                // Start timer if not already running
-                if (previousStatus !== 'Running') {
-                    startConnectionTimer();
-                }
-            } else if (currentStatus === 'Starting') {
-                if (buttonText) buttonText.textContent = 'Connecting...';
-                if (buttonIcon) buttonIcon.textContent = '⏳';
-                toggleServiceBtn.classList.add('connecting');
-                toggleServiceBtn.disabled = true;
-                
-                // Stop timer when starting
-                stopConnectionTimer();
-            } else {
-                if (buttonText) buttonText.textContent = 'Connect';
-                if (buttonIcon) buttonIcon.textContent = '▶';
-                toggleServiceBtn.disabled = false;
-                
-                // Stop timer when stopped
-                stopConnectionTimer();
-            }
-        }
-
-        if (activeConfigNameEl) {
-            activeConfigNameEl.textContent = data.activeConfig || '-';
-        }
-        
         if (activeConfigName !== data.activeConfig) {
             activeConfigName = data.activeConfig;
             updateLatencyResults();
         }
     } catch (error) {
         console.error('Failed to fetch status:', error);
+    }
+}
+
+// Update status summary with connection list data
+async function updateStatusSummary() {
+    try {
+        const response = await authenticatedFetch('/api/connections');
+        const data = await response.json();
+        const connections = data.connections || [];
+        
+        const total = connections.length;
+        const running = connections.filter(c => c.status === 'Running').length;
+        const stopped = connections.filter(c => c.status === 'Stopped').length;
+        const errors = connections.filter(c => c.status === 'Error').length;
+        
+        if (totalConnectionsEl) totalConnectionsEl.textContent = total;
+        if (runningConnectionsEl) runningConnectionsEl.textContent = running;
+        if (stoppedConnectionsEl) stoppedConnectionsEl.textContent = stopped;
+        if (errorConnectionsEl) errorConnectionsEl.textContent = errors;
+        
+        // Update connection selector for speed test
+        updateSpeedTestConnectionSelector(connections);
+    } catch (error) {
+        console.error('Failed to update status summary:', error);
+    }
+}
+
+// Update connection selector in speed test tab
+function updateSpeedTestConnectionSelector(connections) {
+    if (!speedTestConnectionSelect) return;
+    
+    const currentValue = speedTestConnectionSelect.value;
+    speedTestConnectionSelect.innerHTML = '<option value="">Select a connection...</option>';
+    
+    connections.forEach(connection => {
+        const option = document.createElement('option');
+        option.value = connection.id;
+        option.textContent = `${connection.name} (Port ${connection.port})`;
+        if (connection.status === 'Running') {
+            option.textContent += ' ✓';
+        }
+        speedTestConnectionSelect.appendChild(option);
+    });
+    
+    // Restore previous selection if still valid
+    if (currentValue && connections.find(c => c.id === currentValue)) {
+        speedTestConnectionSelect.value = currentValue;
     }
 }
 
@@ -232,17 +233,6 @@ async function updateLogs() {
         console.error('Failed to fetch logs:', error);
     }
 }
-
-toggleServiceBtn.addEventListener('click', async () => {
-    try {
-        const endpoint = currentStatus === 'Running' ? '/api/stop' : '/api/start';
-        await authenticatedFetch(endpoint, { method: 'POST' });
-        // Update status immediately for better UX
-        updateStatus();
-    } catch (error) {
-        console.error('Failed to toggle service:', error);
-    }
-});
 
 addConfigBtn.addEventListener('click', async () => {
     const name = newConfigNameInput.value.trim();
@@ -285,23 +275,10 @@ async function updateLatencyResults() {
         
         const isTesting = data.isTesting;
         testLatencyBtn.disabled = isTesting;
-        if (testLatencyBtnQuick) testLatencyBtnQuick.disabled = isTesting;
         testStatus.textContent = isTesting ? 'Testing in progress...' : '';
 
         const configsResponse = await authenticatedFetch('/api/configs');
         const configsData = await configsResponse.json();
-
-        // Update current latency in status tab
-        if (activeConfigName && currentLatencyEl) {
-            const activeResult = data.results.find(r => r.id === activeConfigName);
-            if (activeResult) {
-                currentLatencyEl.textContent = activeResult.latency === 'FAILED' ? 'FAILED' : activeResult.latency + ' ms';
-                currentLatencyEl.className = activeResult.latency === 'FAILED' ? 'status-stopped' : (activeResult.latency < 500 ? 'status-running' : '');
-            } else {
-                currentLatencyEl.textContent = '-';
-                currentLatencyEl.className = '';
-            }
-        }
 
         // Keep track of which items were open
         const openItems = Array.from(document.querySelectorAll('.accordion-item.active')).map(el => el.dataset.name);
@@ -331,6 +308,7 @@ async function updateLatencyResults() {
                     <div class="accordion-actions">
                         <button class="test-btn" onclick="event.stopPropagation(); testSingleConfig('${id}')">Test</button>
                         <button class="switch-btn" onclick="event.stopPropagation(); switchConfig('${id}')">Switch</button>
+                        <button class="add-connection-btn" onclick="event.stopPropagation(); addToConnections('${id}')">Add to Connections</button>
                         <button class="delete-btn" onclick="event.stopPropagation(); deleteConfig('${id}')">Delete</button>
                     </div>
                 </div>
@@ -384,6 +362,26 @@ async function switchConfig(id) {
         updateStatus();
     } catch (error) {
         console.error('Failed to switch config:', error);
+    }
+}
+
+async function addToConnections(id) {
+    try {
+        const response = await authenticatedFetch('/api/connections', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: id })
+        });
+        const data = await response.json();
+        if (data.error) {
+            alert(data.error);
+        } else {
+            alert(`Config "${id}" added to connections`);
+            updateConnectionsList();
+        }
+    } catch (error) {
+        console.error('Failed to add to connections:', error);
+        alert('Failed to add to connections');
     }
 }
 
@@ -448,7 +446,6 @@ async function testSingleConfig(id) {
 }
 
 testLatencyBtn.addEventListener('click', runLatencyTest);
-if (testLatencyBtnQuick) testLatencyBtnQuick.addEventListener('click', runLatencyTest);
 
 // Speed Test functionality
 const startSpeedTestBtn = document.getElementById('startSpeedTestBtn');
@@ -545,12 +542,21 @@ function resetCharts() {
 
 async function startSpeedTest() {
     try {
-        // Check if Xray is running
-        const statusResponse = await authenticatedFetch('/api/status');
-        const statusData = await statusResponse.json();
+        // Check if a connection is selected
+        const selectedConnectionId = speedTestConnectionSelect ? speedTestConnectionSelect.value : null;
         
-        if (statusData.status !== 'Running') {
-            showError('Please connect to VPN first before running speed test.');
+        if (!selectedConnectionId) {
+            showError('Please select a connection to test.');
+            return;
+        }
+
+        // Check if selected connection is running
+        const connectionsResponse = await authenticatedFetch('/api/connections');
+        const connectionsData = await connectionsResponse.json();
+        const selectedConnection = connectionsData.connections.find(c => c.id === selectedConnectionId);
+        
+        if (!selectedConnection || selectedConnection.status !== 'Running') {
+            showError('Please start the selected connection before running speed test.');
             return;
         }
 
@@ -558,8 +564,12 @@ async function startSpeedTest() {
         resetSpeedTestUI();
         resetCharts();
 
-        // Start the test
-        await authenticatedFetch('/api/speed-test', { method: 'POST' });
+        // Start the test with selected connection
+        await authenticatedFetch('/api/speed-test', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connectionId: selectedConnectionId })
+        });
 
         // Start polling for results
         startSpeedTestBtn.disabled = true;
@@ -654,12 +664,241 @@ document.addEventListener('DOMContentLoaded', () => {
     initSpeedTestCharts();
 });
 
+// ==================== Connection Management Functions ====================
+
+async function updateConnectionsList() {
+    try {
+        const response = await authenticatedFetch('/api/connections');
+        const data = await response.json();
+        const connections = data.connections || [];
+
+        if (connections.length === 0) {
+            connectionsList.style.display = 'none';
+            noConnectionsMessage.style.display = 'block';
+            return;
+        }
+
+        connectionsList.style.display = 'flex';
+        noConnectionsMessage.style.display = 'none';
+
+        connectionsList.innerHTML = '';
+
+        connections.forEach((connection, index) => {
+            const card = document.createElement('div');
+            card.className = 'connection-card';
+            card.dataset.id = connection.id;
+            card.draggable = true;
+
+            const statusClass = connection.status.toLowerCase();
+            const statusText = connection.status;
+            const duration = connection.connectionStartTime 
+                ? formatDuration(Date.now() - connection.connectionStartTime)
+                : '-';
+
+            card.innerHTML = `
+                <div class="connection-card-header">
+                    <div class="connection-card-title">
+                        <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+                        <div class="connection-status-indicator ${statusClass}"></div>
+                        ${connection.name}
+                    </div>
+                </div>
+                <div class="connection-card-info">
+                    <div class="connection-info-item">
+                        <span class="connection-info-label">Status</span>
+                        <span class="connection-info-value status-${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="connection-info-item">
+                        <span class="connection-info-label">Port</span>
+                        <span class="connection-info-value">${connection.port}</span>
+                    </div>
+                    <div class="connection-info-item">
+                        <span class="connection-info-label">Duration</span>
+                        <span class="connection-info-value">${duration}</span>
+                    </div>
+                </div>
+                ${connection.error ? `<div class="connection-error-message">${connection.error}</div>` : ''}
+                <div class="connection-card-actions">
+                    <button class="connection-action-btn connection-start-btn" onclick="startConnection('${connection.id}')" ${connection.status === 'Running' || connection.status === 'Starting' ? 'disabled' : ''}>Start</button>
+                    <button class="connection-action-btn connection-stop-btn" onclick="stopConnection('${connection.id}')" ${connection.status === 'Stopped' ? 'disabled' : ''}>Stop</button>
+                    <button class="connection-action-btn connection-restart-btn" onclick="restartConnection('${connection.id}')" ${connection.status === 'Stopped' ? 'disabled' : ''}>Restart</button>
+                    <button class="connection-action-btn connection-remove-btn" onclick="removeConnection('${connection.id}')">Remove</button>
+                </div>
+            `;
+
+            // Add drag and drop handlers
+            card.addEventListener('dragstart', handleDragStart);
+            card.addEventListener('dragend', handleDragEnd);
+            card.addEventListener('dragover', handleDragOver);
+            card.addEventListener('drop', handleDrop);
+            card.addEventListener('dragleave', handleDragLeave);
+
+            connectionsList.appendChild(card);
+        });
+    } catch (error) {
+        console.error('Failed to fetch connections:', error);
+    }
+}
+
+function formatDuration(ms) {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    if (hours > 0) {
+        return `${hours}h ${minutes % 60}m`;
+    } else if (minutes > 0) {
+        return `${minutes}m ${seconds % 60}s`;
+    } else {
+        return `${seconds}s`;
+    }
+}
+
+async function startConnection(id) {
+    try {
+        await authenticatedFetch(`/api/connections/${id}/start`, { method: 'POST' });
+        updateConnectionsList();
+    } catch (error) {
+        console.error('Failed to start connection:', error);
+        alert('Failed to start connection');
+    }
+}
+
+async function stopConnection(id) {
+    try {
+        await authenticatedFetch(`/api/connections/${id}/stop`, { method: 'POST' });
+        updateConnectionsList();
+    } catch (error) {
+        console.error('Failed to stop connection:', error);
+        alert('Failed to stop connection');
+    }
+}
+
+async function restartConnection(id) {
+    try {
+        await authenticatedFetch(`/api/connections/${id}/restart`, { method: 'POST' });
+        updateConnectionsList();
+    } catch (error) {
+        console.error('Failed to restart connection:', error);
+        alert('Failed to restart connection');
+    }
+}
+
+async function removeConnection(id) {
+    if (!confirm('Are you sure you want to remove this connection from the list?')) return;
+    try {
+        await authenticatedFetch(`/api/connections/${id}`, { method: 'DELETE' });
+        updateConnectionsList();
+    } catch (error) {
+        console.error('Failed to remove connection:', error);
+        alert('Failed to remove connection');
+    }
+}
+
+async function startAllConnections() {
+    try {
+        await authenticatedFetch('/api/connections/start-all', { method: 'POST' });
+        updateConnectionsList();
+    } catch (error) {
+        console.error('Failed to start all connections:', error);
+        alert('Failed to start all connections');
+    }
+}
+
+async function stopAllConnections() {
+    try {
+        await authenticatedFetch('/api/connections/stop-all', { method: 'POST' });
+        updateConnectionsList();
+    } catch (error) {
+        console.error('Failed to stop all connections:', error);
+        alert('Failed to stop all connections');
+    }
+}
+
+// Drag and drop handlers
+let draggedItem = null;
+
+function handleDragStart(e) {
+    draggedItem = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.connection-card').forEach(card => {
+        card.classList.remove('drag-over');
+    });
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    this.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+    this.classList.remove('drag-over');
+}
+
+async function handleDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+
+    if (draggedItem !== this) {
+        const cards = Array.from(connectionsList.querySelectorAll('.connection-card'));
+        const fromIndex = cards.indexOf(draggedItem);
+        const toIndex = cards.indexOf(this);
+
+        // Reorder in DOM
+        if (fromIndex < toIndex) {
+            this.parentNode.insertBefore(draggedItem, this.nextSibling);
+        } else {
+            this.parentNode.insertBefore(draggedItem, this);
+        }
+
+        // Get new order and send to server
+        const newOrder = Array.from(connectionsList.querySelectorAll('.connection-card'))
+            .map(card => card.dataset.id);
+
+        try {
+            await authenticatedFetch('/api/connections/reorder', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: newOrder })
+            });
+            updateConnectionsList();
+        } catch (error) {
+            console.error('Failed to reorder connections:', error);
+            updateConnectionsList(); // Revert on error
+        }
+    }
+}
+
+// Connection management event listeners
+if (startAllConnectionsBtn) {
+    startAllConnectionsBtn.addEventListener('click', startAllConnections);
+}
+if (stopAllConnectionsBtn) {
+    stopAllConnectionsBtn.addEventListener('click', stopAllConnections);
+}
+
 // Polling
-setInterval(updateStatus, 2000);
+setInterval(updateStatusSummary, 2000);
 setInterval(updateLogs, 3000);
 setInterval(updateLatencyResults, 10000); // Slower polling for configs to avoid editor flickering
+setInterval(updateConnectionsList, 3000); // Poll connections list
 
 // Initial load
-updateStatus();
+updateStatusSummary();
 updateLogs();
 setTimeout(updateLatencyResults, 1000); // Wait for Monaco to load
+setTimeout(updateConnectionsList, 500); // Load connections list
+
+// Go to Connections button
+if (goToConnectionsBtn) {
+    goToConnectionsBtn.addEventListener('click', () => {
+        document.querySelector('[data-tab="connections-tab"]').click();
+    });
+}
+

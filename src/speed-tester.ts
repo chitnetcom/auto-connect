@@ -1,6 +1,7 @@
 import axios, { AxiosProgressEvent } from 'axios';
 import { logger } from './logger';
 import { xrayManager } from './xray-manager';
+import { connectionManager } from './connection-manager';
 
 const PROXY_HOST = '127.0.0.1';
 const PROXY_PORT = 1080;
@@ -53,7 +54,21 @@ class SpeedTester {
     this.result = { ...this.result, ...updates };
   }
 
-  private getProxyConfig() {
+  private getProxyConfig(connectionId?: string) {
+    // If a connection ID is provided, use its port
+    if (connectionId) {
+      const connections = connectionManager.getConnections();
+      const connection = connections.find(c => c.id === connectionId);
+      if (connection && connection.status === 'Running') {
+        return {
+          host: PROXY_HOST,
+          port: connection.port,
+          protocol: PROXY_PROTOCOL
+        };
+      }
+    }
+    
+    // Default to port 1080
     return {
       host: PROXY_HOST,
       port: PROXY_PORT,
@@ -61,12 +76,13 @@ class SpeedTester {
     };
   }
 
-  private async checkProxyConnection(): Promise<boolean> {
+  private async checkProxyConnection(proxyConfig?: { host: string; port: number; protocol: string }): Promise<boolean> {
     try {
-      logger.log(`Checking proxy connection to ${PROXY_PROTOCOL}://${PROXY_HOST}:${PROXY_PORT}...`);
+      const config = proxyConfig || this.getProxyConfig();
+      logger.log(`Checking proxy connection to ${config.protocol}://${config.host}:${config.port}...`);
       const start = Date.now();
       await axios.get(PING_TEST_URL, {
-        proxy: this.getProxyConfig(),
+        proxy: config,
         timeout: 10000
       });
       const duration = Date.now() - start;
@@ -83,9 +99,10 @@ class SpeedTester {
     }
   }
 
-  private async measurePing(): Promise<{ ping: number; jitter: number }> {
+  private async measurePing(proxyConfig?: { host: string; port: number; protocol: string }): Promise<{ ping: number; jitter: number }> {
+    const config = proxyConfig || this.getProxyConfig();
     logger.log('Measuring ping...');
-    logger.log(`Using proxy: ${PROXY_PROTOCOL}://${PROXY_HOST}:${PROXY_PORT}`);
+    logger.log(`Using proxy: ${config.protocol}://${config.host}:${config.port}`);
     logger.log(`Ping test URL: ${PING_TEST_URL}`);
     this.updateResult({ phase: 'Measuring Ping', progress: 10 });
 
@@ -97,7 +114,7 @@ class SpeedTester {
         const start = Date.now();
         logger.log(`Ping ${i + 1}/${pingCount}: Starting request to ${PING_TEST_URL}...`);
         await axios.get(PING_TEST_URL, {
-          proxy: this.getProxyConfig(),
+          proxy: config,
           timeout: 10000
         });
         const ping = Date.now() - start;
@@ -129,7 +146,8 @@ class SpeedTester {
     return { ping: avgPing, jitter };
   }
 
-  private async measureDownloadSpeed(): Promise<number> {
+  private async measureDownloadSpeed(proxyConfig?: { host: string; port: number; protocol: string }): Promise<number> {
+    const config = proxyConfig || this.getProxyConfig();
     logger.log('Measuring download speed...');
     logger.log(`Download test URLs: ${DOWNLOAD_TEST_URLS.join(', ')}`);
     this.updateResult({ phase: 'Measuring Download Speed', progress: 30 });
@@ -148,7 +166,7 @@ class SpeedTester {
         let downloadedBytes = 0;
 
         const response = await axios.get(url, {
-          proxy: this.getProxyConfig(),
+          proxy: config,
           responseType: 'arraybuffer',
           timeout: TEST_TIMEOUT,
           onDownloadProgress: (progressEvent: AxiosProgressEvent) => {
@@ -191,7 +209,8 @@ class SpeedTester {
     return avgSpeed;
   }
 
-  private async measureUploadSpeed(): Promise<number> {
+  private async measureUploadSpeed(proxyConfig?: { host: string; port: number; protocol: string }): Promise<number> {
+    const config = proxyConfig || this.getProxyConfig();
     logger.log('Measuring upload speed...');
     logger.log(`Upload test URL: ${UPLOAD_TEST_URL}`);
     this.updateResult({ phase: 'Measuring Upload Speed', progress: 70 });
@@ -211,7 +230,7 @@ class SpeedTester {
         const startTime = Date.now();
         
         await axios.post(UPLOAD_TEST_URL, data, {
-          proxy: this.getProxyConfig(),
+          proxy: config,
           timeout: TEST_TIMEOUT,
           onUploadProgress: (progressEvent: AxiosProgressEvent) => {
             if (progressEvent.total) {
@@ -252,19 +271,17 @@ class SpeedTester {
     return avgSpeed;
   }
 
-  async runSpeedTest(): Promise<SpeedTestResult> {
+  async runSpeedTest(connectionId?: string): Promise<SpeedTestResult> {
     if (this.isTesting) {
       throw new Error('Speed test is already in progress');
     }
 
-    // Check if Xray is running
-    if (xrayManager.getStatus() !== 'Running') {
-      throw new Error('Xray is not running. Please connect first.');
-    }
+    // Get proxy config for selected connection
+    const proxyConfig = this.getProxyConfig(connectionId);
+    const proxyPort = proxyConfig.port;
 
     logger.log('=== SPEED TEST DIAGNOSTICS ===');
-    logger.log(`Xray Status: ${xrayManager.getStatus()}`);
-    logger.log(`Proxy Configuration: ${PROXY_PROTOCOL}://${PROXY_HOST}:${PROXY_PORT}`);
+    logger.log(`Proxy Configuration: ${PROXY_PROTOCOL}://${PROXY_HOST}:${proxyPort}`);
 
     // Test direct connection (bypass proxy) to check if network is working
     logger.log('Testing direct network connection (bypassing proxy)...');
@@ -279,9 +296,9 @@ class SpeedTester {
     }
 
     // Check if proxy is accessible
-    const proxyConnected = await this.checkProxyConnection();
+    const proxyConnected = await this.checkProxyConnection(proxyConfig);
     if (!proxyConnected) {
-      throw new Error('Cannot connect to proxy on port 1080. Please check your connection.');
+      throw new Error(`Cannot connect to proxy on port ${proxyPort}. Please check your connection.`);
     }
 
     this.isTesting = true;
@@ -300,15 +317,15 @@ class SpeedTester {
 
     try {
       // Measure ping and jitter
-      const { ping, jitter } = await this.measurePing();
+      const { ping, jitter } = await this.measurePing(proxyConfig);
       this.updateResult({ ping, jitter });
 
       // Measure download speed
-      const downloadSpeed = await this.measureDownloadSpeed();
+      const downloadSpeed = await this.measureDownloadSpeed(proxyConfig);
       this.updateResult({ downloadSpeed });
 
       // Measure upload speed
-      const uploadSpeed = await this.measureUploadSpeed();
+      const uploadSpeed = await this.measureUploadSpeed(proxyConfig);
       this.updateResult({ uploadSpeed });
 
       // Test completed
