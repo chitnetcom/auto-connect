@@ -37,7 +37,8 @@ app.use(authMiddleware);
 app.get('/api/status', (req, res) => {
   res.json({
     status: xrayManager.getStatus(),
-    activeConfig: xrayManager.getActiveConfigName()
+    activeConfig: xrayManager.getActiveConfigName(),
+    connectionStartTime: xrayManager.getConnectionStartTime()
   });
 });
 

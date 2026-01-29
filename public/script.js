@@ -114,7 +114,10 @@ require(['vs/editor/editor.main'], function () {
 
 // Connection timer functions
 function startConnectionTimer() {
-    connectionStartTime = Date.now();
+    // Only set connectionStartTime if it's not already set (e.g., from persisted state)
+    if (!connectionStartTime) {
+        connectionStartTime = Date.now();
+    }
     if (connectionTimerInterval) {
         clearInterval(connectionTimerInterval);
     }
@@ -178,6 +181,11 @@ async function updateStatus() {
                 if (buttonIcon) buttonIcon.textContent = '⏹';
                 toggleServiceBtn.classList.add('connected');
                 toggleServiceBtn.disabled = false;
+                
+                // Use persisted connection start time if available
+                if (data.connectionStartTime && !connectionStartTime) {
+                    connectionStartTime = data.connectionStartTime;
+                }
                 
                 // Start timer if not already running
                 if (previousStatus !== 'Running') {

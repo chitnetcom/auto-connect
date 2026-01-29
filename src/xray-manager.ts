@@ -23,6 +23,7 @@ class XrayManager {
   private process: ChildProcess | null = null;
   private status: XrayStatus = XrayStatus.STOPPED;
   private activeConfigName: string | null = null;
+  private connectionStartTime: number | null = null;
 
   async ensureFilesExist(): Promise<void> {
     await fs.ensureDir(path.dirname(CONFIG_PATH));
@@ -45,6 +46,7 @@ class XrayManager {
       try {
         const state = await fs.readJson(STATE_JSON_PATH);
         this.activeConfigName = state.activeConfigName || null;
+        this.connectionStartTime = state.connectionStartTime || null;
       } catch (err) {
         logger.log('Failed to read state.json');
       }
@@ -92,6 +94,10 @@ class XrayManager {
     return this.activeConfigName;
   }
 
+  getConnectionStartTime(): number | null {
+    return this.connectionStartTime;
+  }
+
   async start(): Promise<void> {
     if (this.status === XrayStatus.RUNNING || this.status === XrayStatus.STARTING) {
       return;
@@ -131,6 +137,8 @@ class XrayManager {
 
       // Give it a moment to see if it crashes immediately
       this.status = XrayStatus.RUNNING;
+      this.connectionStartTime = Date.now();
+      await this.saveState();
     } catch (error: any) {
       this.status = XrayStatus.STOPPED;
       logger.log(`Error spawning Xray: ${error.message}`);
@@ -148,6 +156,8 @@ class XrayManager {
     this.process.kill();
     this.process = null;
     this.status = XrayStatus.STOPPED;
+    this.connectionStartTime = null;
+    this.saveState().catch(err => logger.log(`Failed to save state: ${err.message}`));
   }
 
   async switchConfig(name: string): Promise<void> {
@@ -221,7 +231,10 @@ class XrayManager {
 
   private async saveState(): Promise<void> {
     try {
-      await fs.writeJson(STATE_JSON_PATH, { activeConfigName: this.activeConfigName }, { spaces: 2 });
+      await fs.writeJson(STATE_JSON_PATH, { 
+        activeConfigName: this.activeConfigName,
+        connectionStartTime: this.connectionStartTime
+      }, { spaces: 2 });
     } catch (err: any) {
       logger.log(`Failed to save state: ${err.message}`);
     }
