@@ -102,7 +102,7 @@ tabBtns.forEach(btn => {
 });
 
 // Initialize Monaco
-require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+require.config({ paths: { 'vs': 'vs' } });
 require(['vs/editor/editor.main'], function () {
     mainEditor = monaco.editor.create(document.getElementById('editorContainer'), {
         value: '{\n  "inbounds": [],\n  "outbounds": []\n}',
