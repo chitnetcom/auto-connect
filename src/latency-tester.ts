@@ -7,8 +7,9 @@ import { xrayManager } from "./xray-manager";
 
 // const TEST_URL = "http://cp.cloudflere.com/generate_204";
 // const TEST_URL = "http://www.google.com/generate_204";
-const TEST_URL = "http://api.myip.com";
+// const TEST_URL = "http://api.myip.com";
 // const TEST_URL = "http://digikala.com";
+const TEST_URL = process.env.TEST_URL || 'http://google.com';
 const TEST_TIMEOUT = 12000;
 const START_PORT = 10000;
 
