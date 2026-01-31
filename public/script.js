@@ -350,11 +350,20 @@ function toggleAccordion(name) {
 }
 
 async function addToConnections(id) {
+    const port = prompt('Enter base port (leave empty for default 1080):', '1080');
+    if (port === null) return; // User cancelled
+    
+    const basePort = port.trim() === '' ? undefined : parseInt(port);
+    if (basePort !== undefined && (isNaN(basePort) || basePort < 1024 || basePort > 65535)) {
+        alert('Please enter a valid port number (1024-65535)');
+        return;
+    }
+    
     try {
         const response = await authenticatedFetch('/api/connections', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: id })
+            body: JSON.stringify({ name: id, basePort })
         });
         const data = await response.json();
         if (data.error) {
@@ -694,7 +703,22 @@ async function updateConnectionsList() {
                     </div>
                     <div class="connection-info-item">
                         <span class="connection-info-label">Port</span>
-                        <span class="connection-info-value">${connection.port}</span>
+                        <div class="port-input-container">
+                            <input 
+                                type="number" 
+                                class="connection-port-input" 
+                                value="${connection.port}"
+                                data-connection-id="${connection.id}"
+                                min="1024"
+                                max="65535"
+                                ${connection.status === 'Running' ? 'disabled' : ''}
+                            />
+                            <button 
+                                class="port-save-btn" 
+                                onclick="saveConnectionPort('${connection.id}')"
+                                ${connection.status === 'Running' ? 'disabled' : ''}
+                            >Save</button>
+                        </div>
                     </div>
                     <div class="connection-info-item">
                         <span class="connection-info-label">Duration</span>
@@ -776,6 +800,34 @@ async function removeConnection(id) {
     } catch (error) {
         console.error('Failed to remove connection:', error);
         alert('Failed to remove connection');
+    }
+}
+
+async function saveConnectionPort(id) {
+    const input = document.querySelector(`input[data-connection-id="${id}"]`);
+    const newPort = parseInt(input.value);
+    
+    if (isNaN(newPort) || newPort < 1024 || newPort > 65535) {
+        alert('Please enter a valid port number (1024-65535)');
+        return;
+    }
+    
+    try {
+        const response = await authenticatedFetch(`/api/connections/${id}/port`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ basePort: newPort })
+        });
+        const data = await response.json();
+        if (data.error) {
+            alert(data.error);
+        } else {
+            // Success - list will refresh automatically
+            updateConnectionsList();
+        }
+    } catch (error) {
+        console.error('Failed to update port:', error);
+        alert('Failed to update port');
     }
 }
 

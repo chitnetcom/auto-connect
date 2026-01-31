@@ -187,12 +187,12 @@ app.get('/api/connections', (req, res) => {
 
 // Add a connection to the list
 app.post('/api/connections', async (req, res) => {
-  const { name } = req.body;
+  const { name, basePort } = req.body;
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
   }
   try {
-    await connectionManager.addConnection(name);
+    await connectionManager.addConnection(name, basePort);
     res.json({ message: `Connection "${name}" added` });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -205,6 +205,23 @@ app.delete('/api/connections/:id', async (req, res) => {
   try {
     await connectionManager.removeConnection(id);
     res.json({ message: `Connection "${id}" removed` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update connection port
+app.put('/api/connections/:id/port', async (req, res) => {
+  const { id } = req.params;
+  const { basePort } = req.body;
+  
+  if (typeof basePort !== 'number') {
+    return res.status(400).json({ error: 'basePort must be a number' });
+  }
+  
+  try {
+    await connectionManager.updateConnectionPort(id, basePort);
+    res.json({ message: `Connection "${id}" port updated to ${basePort}` });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

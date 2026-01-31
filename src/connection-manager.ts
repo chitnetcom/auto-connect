@@ -21,10 +21,11 @@ export enum ConnectionStatus {
 }
 
 export interface ConnectionInstance {
-  id: string;                    // Unique identifier (config name)
-  name: string;                  // Display name
+  id: string;                    // Unique identifier (config ID)
+  name: string;                  // Display name (config name)
   config: any;                   // Xray configuration
-  port: number;                  // Assigned port
+  basePort: number;              // User-configurable base port
+  port: number;                  // Assigned port (for backward compatibility)
   process: ChildProcess | null;  // Xray process handle
   status: ConnectionStatus;      // Current status
   connectionStartTime: number | null;
@@ -54,18 +55,8 @@ class ConnectionManager {
 
   // ==================== Connection List Management ====================
 
-  async addConnection(name: string): Promise<void> {
+  async addConnection(name: string, basePort?: number): Promise<void> {
     logger.log(`[ConnectionManager] Adding connection: ${name}`);
-
-    // Check if connection already exists
-    if (this.connections.find(c => c.id === name)) {
-      throw new Error(`Connection "${name}" already exists in the list`);
-    }
-
-    // Check max connections limit
-    if (this.connections.length >= MAX_CONNECTIONS) {
-      throw new Error(`Maximum number of connections (${MAX_CONNECTIONS}) reached`);
-    }
 
     // Get config from xrayManager
     const configs = await xrayManager.listConfigs();
@@ -74,12 +65,26 @@ class ConnectionManager {
       throw new Error(`Config "${name}" not found`);
     }
 
-    // Create connection instance
+    // Check if connection already exists (using config ID)
+    if (this.connections.find(c => c.id === configItem.id)) {
+      throw new Error(`Connection "${name}" already exists in the list`);
+    }
+
+    // Check max connections limit
+    if (this.connections.length >= MAX_CONNECTIONS) {
+      throw new Error(`Maximum number of connections (${MAX_CONNECTIONS}) reached`);
+    }
+
+    // Use provided basePort or default to CONNECTION_START_PORT
+    const assignedBasePort = basePort ?? CONNECTION_START_PORT;
+
+    // Create connection instance using config ID
     const connection: ConnectionInstance = {
-      id: name,
+      id: configItem.id,
       name: name,
       config: configItem.config,
-      port: CONNECTION_START_PORT + this.connections.length,
+      basePort: assignedBasePort,
+      port: assignedBasePort,
       process: null,
       status: ConnectionStatus.STOPPED,
       connectionStartTime: null
@@ -87,7 +92,7 @@ class ConnectionManager {
 
     this.connections.push(connection);
     await this.saveState();
-    logger.log(`[ConnectionManager] Connection "${name}" added at position ${this.connections.length - 1} on port ${connection.port}`);
+    logger.log(`[ConnectionManager] Connection "${name}" added on base port ${connection.basePort}`);
   }
 
   async removeConnection(id: string): Promise<void> {
@@ -106,8 +111,6 @@ class ConnectionManager {
     // Remove from list
     this.connections = this.connections.filter(c => c.id !== id);
     
-    // Update ports for remaining connections
-    await this.updatePorts();
     await this.saveState();
     logger.log(`[ConnectionManager] Connection "${id}" removed`);
   }
@@ -133,8 +136,6 @@ class ConnectionManager {
 
     this.connections = reorderedConnections;
     
-    // Update ports
-    await this.updatePorts();
     await this.saveState();
     logger.log(`[ConnectionManager] Connections reordered`);
   }
@@ -148,6 +149,48 @@ class ConnectionManager {
 
   getConnection(id: string): ConnectionInstance | undefined {
     return this.connections.find(c => c.id === id);
+  }
+
+  async updateConnectionPort(id: string, newBasePort: number): Promise<void> {
+    logger.log(`[ConnectionManager] Updating port for connection: ${id} to ${newBasePort}`);
+
+    const connection = this.getConnection(id);
+    if (!connection) {
+      throw new Error(`Connection "${id}" not found`);
+    }
+
+    // Validate port range
+    if (newBasePort < 1024 || newBasePort > 65535) {
+      throw new Error('Port must be between 1024 and 65535');
+    }
+
+    // Check for port conflicts with other connections
+    const portConflict = this.connections.find(c => 
+      c.id !== id && c.basePort === newBasePort
+    );
+    if (portConflict) {
+      throw new Error(`Port ${newBasePort} is already in use by "${portConflict.name}"`);
+    }
+
+    const wasRunning = connection.status === ConnectionStatus.RUNNING;
+
+    // Stop if running
+    if (wasRunning) {
+      await this.stopConnection(id);
+    }
+
+    // Update port
+    connection.basePort = newBasePort;
+    connection.port = newBasePort;
+
+    await this.saveState();
+
+    // Restart if it was running
+    if (wasRunning) {
+      await this.startConnection(id);
+    }
+
+    logger.log(`[ConnectionManager] Connection "${id}" port updated to ${newBasePort}`);
   }
 
   // ==================== Individual Connection Control ====================
@@ -169,6 +212,16 @@ class ConnectionManager {
     connection.error = undefined;
 
     try {
+      // Refresh config from configs list to get latest changes
+      const configs = await xrayManager.listConfigs();
+      const configItem = configs.find(c => c.id === id);
+      if (!configItem) {
+        throw new Error(`Config with ID "${id}" not found in configs list`);
+      }
+      connection.config = configItem.config;
+      connection.name = configItem.name; // Update name in case it changed
+      logger.log(`[Connection: ${id}] Config refreshed from configs list`);
+
       // Create temp config file with assigned port
       const tempConfigPath = await this.createTempConfig(connection);
 
@@ -309,6 +362,7 @@ class ConnectionManager {
         connections: this.connections.map(c => ({
           id: c.id,
           name: c.name,
+          basePort: c.basePort,
           port: c.port,
           status: c.status,
           connectionStartTime: c.connectionStartTime,
@@ -339,20 +393,23 @@ class ConnectionManager {
       // Rebuild connections with full config data
       this.connections = [];
       for (const connState of state.connections) {
-        const configItem = configs.find(c => c.name === connState.id);
+        const configItem = configs.find(c => c.id === connState.id);
         if (configItem) {
+          // Migrate existing connections: use basePort if available, otherwise use port
+          const basePort = (connState as any).basePort ?? connState.port;
           this.connections.push({
             id: connState.id,
-            name: connState.name,
+            name: configItem.name, // Use current name from config
             config: configItem.config,
-            port: connState.port,
+            basePort: basePort,
+            port: basePort,
             process: null,
             status: connState.status,
             connectionStartTime: connState.connectionStartTime,
             error: connState.error
           });
         } else {
-          logger.log(`[ConnectionManager] Config "${connState.id}" not found, skipping`);
+          logger.log(`[ConnectionManager] Config with ID "${connState.id}" not found, skipping`);
         }
       }
 
@@ -410,21 +467,15 @@ class ConnectionManager {
       throw new Error('No inbounds found in config');
     }
 
-    // Calculate the connection index to determine port offset
-    const connectionIndex = this.connections.findIndex(c => c.id === connection.id);
-    if (connectionIndex === -1) {
-      throw new Error(`Connection "${connection.id}" not found in connections list`);
-    }
+    // Get the first inbound's original port to calculate offsets
+    const firstInboundOriginalPort = connection.config.inbounds[0].port;
+    const basePort = connection.basePort;
 
-    // Update ALL inbounds' ports based on connection index
+    // Update all inbounds' ports based on base port
     tempConfig.inbounds.forEach((inbound: any, index: number) => {
-      // Get the original port from the base config
       const originalPort = connection.config.inbounds[index].port;
-      
-      // Calculate the new port by adding the connection index offset
-      // This preserves the port spacing between different inbounds
-      const portOffset = connectionIndex;
-      inbound.port = originalPort + portOffset;
+      const offset = originalPort - firstInboundOriginalPort;
+      inbound.port = basePort + offset;
     });
 
     // Set log level

@@ -864,6 +864,55 @@ button:disabled {
     border-style: dashed;
 }
 
+/* Port Input Container */
+.port-input-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.connection-port-input {
+    width: 80px;
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-color);
+    background: var(--card-bg);
+}
+
+.connection-port-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.connection-port-input:disabled {
+    background: var(--bg-color);
+    color: var(--text-secondary);
+    cursor: not-allowed;
+}
+
+.port-save-btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    background: var(--primary-color);
+    color: white;
+    border: 1px solid var(--primary-color);
+}
+
+.port-save-btn:hover:not(:disabled) {
+    opacity: 0.85;
+}
+
+.port-save-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 /* Status Summary Styles */
 .status-summary {
     display: grid;

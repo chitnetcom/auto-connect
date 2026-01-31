@@ -8,6 +8,11 @@ const OTHERS_CONFIG_DIR = path.join(__dirname, '../configs/others');
 const OTHERS_JSON_PATH = path.join(__dirname, '../configs/others.json');
 const STATE_JSON_PATH = path.join(__dirname, '../configs/state.json');
 
+// Generate unique ID using datetime
+function generateUniqueId(): string {
+  return Date.now().toString();
+}
+
 export enum XrayStatus {
   RUNNING = 'Running',
   STOPPED = 'Stopped',
@@ -15,6 +20,7 @@ export enum XrayStatus {
 }
 
 export interface ConfigItem {
+  id: string;
   name: string;
   config: any;
 }
@@ -71,7 +77,7 @@ class XrayManager {
         if (await fs.pathExists(configPath)) {
           try {
             const config = await fs.readJson(configPath);
-            configs.push({ name: d, config });
+            configs.push({ id: generateUniqueId(), name: d, config });
           } catch (err: any) {
             logger.log(`Failed to read config in ${d}: ${err.message}`);
           }
@@ -198,7 +204,7 @@ class XrayManager {
     if (configs.find(c => c.name === name)) {
       throw new Error(`Config with name "${name}" already exists`);
     }
-    configs.push({ name, config });
+    configs.push({ id: generateUniqueId(), name, config });
     await fs.writeJson(OTHERS_JSON_PATH, configs, { spaces: 2 });
     logger.log(`Added config: ${name}`);
   }
