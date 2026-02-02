@@ -12,6 +12,7 @@ import { xrayManager } from "./xray-manager";
 const TEST_URL = process.env.TEST_URL || 'http://google.com';
 const TEST_TIMEOUT = 12000;
 const START_PORT = 10000;
+const BATCH_SIZE = 3;
 
 export interface TestResult {
    id: string;
@@ -37,37 +38,47 @@ class LatencyTester {
 
       this.isTesting = true;
       this.results = [];
-      logger.log("Starting parallel latency tests...");
+      logger.log("Starting latency tests in batches of " + BATCH_SIZE + "...");
 
       try {
          const configs = await xrayManager.listConfigs();
          
-         const testPromises = configs.map(async (item, index) => {
-            const id = item.name;
-            const port = START_PORT + index;
-            logger.log(`Testing config ${id} on port ${port}...`);
+         // Process configs in batches of up to 3
+         for (let i = 0; i < configs.length; i += BATCH_SIZE) {
+            const batch = configs.slice(i, i + BATCH_SIZE);
+            logger.log(`Testing batch ${Math.floor(i / BATCH_SIZE) + 1}: ${batch.map(c => c.name).join(', ')}`);
             
-            const latency = await this.testConfig(item.config, port, id);
-            
-            const result = { id, latency };
-            this.results.push(result);
-            logger.log(
-               `Config ${id} latency: ${latency === "FAILED" ? "FAILED" : latency + "ms"}`,
-            );
-            return result;
-         });
+            const testPromises = batch.map((item, batchIndex) => {
+               const id = item.name;
+               const port = START_PORT + i + batchIndex;
+               logger.log(`Testing config ${id} on port ${port}...`);
+               
+               return this.testConfig(item.config, port, id).then(latency => {
+                  const result = { id, latency };
+                  this.results.push(result);
+                  logger.log(
+                     `Config ${id} latency: ${latency === "FAILED" ? "FAILED" : latency + "ms"}`,
+                  );
+                  return result;
+               });
+            });
 
-         await Promise.all(testPromises);
+            // Wait for current batch to complete before starting next batch
+            await Promise.all(testPromises);
+            
+            // Clean up temp files after each batch
+            const tempDir = path.join(__dirname, "../configs/temp");
+            if (await fs.pathExists(tempDir)) {
+               await fs.emptyDir(tempDir);
+            }
+            
+            logger.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1} completed.`);
+         }
 
          logger.log("Latency tests completed.");
          return this.results;
       } finally {
          this.isTesting = false;
-         // Clean up any remaining temp files if needed
-         const tempDir = path.join(__dirname, "../configs/temp");
-         if (await fs.pathExists(tempDir)) {
-            await fs.emptyDir(tempDir);
-         }
       }
    }
 
