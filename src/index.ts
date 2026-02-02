@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
+import os from 'os';
 import { xrayManager } from './xray-manager';
 import { connectionManager } from './connection-manager';
 import { logger } from './logger';
@@ -328,6 +329,99 @@ app.get('/api/connections/:id/status', (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ==================== Server Resources Endpoint ====================
+
+app.get('/api/resources', (req, res) => {
+  try {
+    // Memory usage
+    const totalMemory = os.totalmem();
+    const freeMemory = os.freemem();
+    const usedMemory = totalMemory - freeMemory;
+    const memoryPercentage = Math.round((usedMemory / totalMemory) * 100);
+    
+    // CPU usage (sample over a short interval)
+    const cpuCores = os.cpus().length;
+    const cpuLoad = os.loadavg();
+    // Convert load average to percentage (approximation)
+    const cpuPercentage = Math.min(Math.round((cpuLoad[0] / cpuCores) * 100), 100);
+    
+    // Disk usage (root partition)
+    const diskUsage = getDiskUsage();
+    
+    // Network statistics (active connections)
+    const networkStats = getNetworkStats();
+    
+    res.json({
+      memory: {
+        used: usedMemory,
+        total: totalMemory,
+        percentage: memoryPercentage
+      },
+      cpu: {
+        usage: cpuPercentage,
+        cores: cpuCores
+      },
+      disk: {
+        used: diskUsage.used,
+        total: diskUsage.total,
+        percentage: diskUsage.percentage
+      },
+      network: {
+        connections: networkStats.connections,
+        inbound: networkStats.inbound,
+        outbound: networkStats.outbound
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper function to get disk usage
+function getDiskUsage() {
+  try {
+    // For Linux systems using df command
+    const { execSync } = require('child_process');
+    const output = execSync('df -B 1 / | tail -1', { encoding: 'utf8' });
+    const parts = output.trim().split(/\s+/);
+    if (parts.length >= 6) {
+      const total = parseInt(parts[1]);
+      const used = parseInt(parts[2]);
+      const available = parseInt(parts[3]);
+      const percentage = Math.round((used / total) * 100);
+      return { used, total, available, percentage };
+    }
+  } catch (error) {
+    const err = error as Error;
+    console.error('Failed to get disk usage:', err.message);
+  }
+  // Fallback values
+  return { used: 0, total: 0, available: 0, percentage: 0 };
+}
+
+// Helper function to get network statistics
+function getNetworkStats() {
+  try {
+    // Get active connections count
+    const { execSync } = require('child_process');
+    const connectionsOutput = execSync('ss -tun 2>/dev/null | wc -l', { encoding: 'utf8' });
+    const connections = Math.max(0, parseInt(connectionsOutput.trim()) - 1); // Subtract header line
+    
+    // Get network I/O statistics
+    const ioOutput = execSync('cat /proc/net/dev | grep -v "lo:" | awk \'{in+=$2; out+=$10} END {print in, out}\'', { encoding: 'utf8' });
+    const parts = ioOutput.trim().split(/\s+/);
+    const inbound = parts[0] ? parseInt(parts[0]) : 0;
+    const outbound = parts[1] ? parseInt(parts[1]) : 0;
+    
+    return { connections, inbound, outbound };
+  } catch (error) {
+    const err = error as Error;
+    console.error('Failed to get network stats:', err.message);
+  }
+  // Fallback values
+  return { connections: 0, inbound: 0, outbound: 0 };
+}
 
 app.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);

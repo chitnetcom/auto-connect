@@ -58,6 +58,92 @@
                 <div class="status-actions">
                     <button id="goToConnectionsBtn" class="action-btn">Manage Connections</button>
                 </div>
+                
+                <!-- Server Resources Section -->
+                <div class="server-resources">
+                    <h3 class="section-title">Server Resources</h3>
+                    <div class="resources-grid">
+                        <div class="resource-card">
+                            <div class="resource-header">
+                                <div class="resource-icon ram-icon">💾</div>
+                                <div class="resource-info">
+                                    <div class="resource-title">Memory Usage</div>
+                                    <div class="resource-value" id="ramUsage">--</div>
+                                </div>
+                            </div>
+                            <div class="resource-progress">
+                                <div class="progress-track">
+                                    <div class="progress-fill ram-fill" id="ramProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="progress-details">
+                                    <span id="ramUsed">0 GB</span>
+                                    <span id="ramTotal">/ 0 GB</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="resource-card">
+                            <div class="resource-header">
+                                <div class="resource-icon cpu-icon">⚙️</div>
+                                <div class="resource-info">
+                                    <div class="resource-title">CPU Usage</div>
+                                    <div class="resource-value" id="cpuUsage">--</div>
+                                </div>
+                            </div>
+                            <div class="resource-progress">
+                                <div class="progress-track">
+                                    <div class="progress-fill cpu-fill" id="cpuProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="progress-details">
+                                    <span id="cpuCores">0 Cores</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="resource-card">
+                            <div class="resource-header">
+                                <div class="resource-icon disk-icon">💿</div>
+                                <div class="resource-info">
+                                    <div class="resource-title">Disk Usage</div>
+                                    <div class="resource-value" id="diskUsage">--</div>
+                                </div>
+                            </div>
+                            <div class="resource-progress">
+                                <div class="progress-track">
+                                    <div class="progress-fill disk-fill" id="diskProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="progress-details">
+                                    <span id="diskUsed">0 GB</span>
+                                    <span id="diskTotal">/ 0 GB</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="resource-card">
+                            <div class="resource-header">
+                                <div class="resource-icon network-icon">🌐</div>
+                                <div class="resource-info">
+                                    <div class="resource-title">Network</div>
+                                    <div class="resource-value" id="networkConnections">--</div>
+                                </div>
+                            </div>
+                            <div class="network-stats">
+                                <div class="network-stat">
+                                    <span class="stat-label">Inbound</span>
+                                    <span class="stat-value" id="networkInbound">0 MB</span>
+                                </div>
+                                <div class="network-stat">
+                                    <span class="stat-label">Outbound</span>
+                                    <span class="stat-value" id="networkOutbound">0 MB</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="resources-footer">
+                        <span class="last-updated">Last updated: <span id="resourcesLastUpdated">--</span></span>
+                        <button id="refreshResourcesBtn" class="refresh-btn">🔄 Refresh</button>
+                    </div>
+                </div>
             </section>
  
             <section id="connections-tab" class="tab-pane">

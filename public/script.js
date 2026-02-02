@@ -1031,3 +1031,143 @@ if (goToConnectionsBtn) {
     });
 }
 
+// ==================== Server Resources Functions ====================
+
+// Resource monitoring elements
+const ramUsageEl = document.getElementById('ramUsage');
+const ramProgressEl = document.getElementById('ramProgress');
+const ramUsedEl = document.getElementById('ramUsed');
+const ramTotalEl = document.getElementById('ramTotal');
+
+const cpuUsageEl = document.getElementById('cpuUsage');
+const cpuProgressEl = document.getElementById('cpuProgress');
+const cpuCoresEl = document.getElementById('cpuCores');
+
+const diskUsageEl = document.getElementById('diskUsage');
+const diskProgressEl = document.getElementById('diskProgress');
+const diskUsedEl = document.getElementById('diskUsed');
+const diskTotalEl = document.getElementById('diskTotal');
+
+const networkConnectionsEl = document.getElementById('networkConnections');
+const networkInboundEl = document.getElementById('networkInbound');
+const networkOutboundEl = document.getElementById('networkOutbound');
+const resourcesLastUpdatedEl = document.getElementById('resourcesLastUpdated');
+const refreshResourcesBtn = document.getElementById('refreshResourcesBtn');
+
+// Format bytes to human readable
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Format number with comma separators
+function formatNumber(num) {
+    return num.toLocaleString();
+}
+
+// Update resource card warning/critical state
+function updateResourceState(elementId, percentage) {
+    const card = document.querySelector(`.resource-card:has(#${elementId})`);
+    if (!card) return;
+    
+    card.classList.remove('warning', 'critical');
+    if (percentage >= 90) {
+        card.classList.add('critical');
+    } else if (percentage >= 75) {
+        card.classList.add('warning');
+    }
+}
+
+// Fetch and update server resources
+async function updateServerResources() {
+    try {
+        const response = await authenticatedFetch('/api/resources');
+        const data = await response.json();
+        
+        // Update RAM
+        if (data.memory) {
+            const { used, total, percentage } = data.memory;
+            const totalGB = (total / (1024 * 1024 * 1024)).toFixed(1);
+            const usedGB = (used / (1024 * 1024 * 1024)).toFixed(2);
+            
+            if (ramUsageEl) ramUsageEl.textContent = percentage + '%';
+            if (ramProgressEl) ramProgressEl.style.width = percentage + '%';
+            if (ramUsedEl) ramUsedEl.textContent = usedGB + ' GB';
+            if (ramTotalEl) ramTotalEl.textContent = '/ ' + totalGB + ' GB';
+            
+            updateResourceState('ramProgress', percentage);
+        }
+        
+        // Update CPU
+        if (data.cpu) {
+            const { usage, cores } = data.cpu;
+            
+            if (cpuUsageEl) cpuUsageEl.textContent = usage + '%';
+            if (cpuProgressEl) cpuProgressEl.style.width = usage + '%';
+            if (cpuCoresEl) cpuCoresEl.textContent = cores + ' Core' + (cores > 1 ? 's' : '');
+            
+            updateResourceState('cpuProgress', usage);
+        }
+        
+        // Update Disk
+        if (data.disk) {
+            const { used, total, percentage } = data.disk;
+            const totalGB = (total / (1024 * 1024 * 1024)).toFixed(1);
+            const usedGB = (used / (1024 * 1024 * 1024)).toFixed(2);
+            
+            if (diskUsageEl) diskUsageEl.textContent = percentage + '%';
+            if (diskProgressEl) diskProgressEl.style.width = percentage + '%';
+            if (diskUsedEl) usedGB + ' GB';
+            if (diskTotalEl) '/ ' + totalGB + ' GB';
+            
+            updateResourceState('diskProgress', percentage);
+        }
+        
+        // Update Network
+        if (data.network) {
+            const { connections, inbound, outbound } = data.network;
+            
+            if (networkConnectionsEl) networkConnectionsEl.textContent = formatNumber(connections);
+            if (networkInboundEl) networkInboundEl.textContent = formatBytes(inbound);
+            if (networkOutboundEl) networkOutboundEl.textContent = formatBytes(outbound);
+        }
+        
+        // Update timestamp
+        if (resourcesLastUpdatedEl) {
+            const now = new Date();
+            resourcesLastUpdatedEl.textContent = now.toLocaleTimeString();
+        }
+        
+    } catch (error) {
+        console.error('Failed to fetch server resources:', error);
+        // Set default values on error
+        if (ramUsageEl) ramUsageEl.textContent = '--';
+        if (cpuUsageEl) cpuUsageEl.textContent = '--';
+        if (diskUsageEl) diskUsageEl.textContent = '--';
+        if (networkConnectionsEl) networkConnectionsEl.textContent = '--';
+    }
+}
+
+// Refresh button click handler
+if (refreshResourcesBtn) {
+    refreshResourcesBtn.addEventListener('click', () => {
+        refreshResourcesBtn.disabled = true;
+        refreshResourcesBtn.textContent = '⏳';
+        updateServerResources().then(() => {
+            setTimeout(() => {
+                refreshResourcesBtn.disabled = false;
+                refreshResourcesBtn.textContent = '🔄 Refresh';
+            }, 500);
+        });
+    });
+}
+
+// Initial load and polling for resources
+if (resourcesLastUpdatedEl) {
+    updateServerResources();
+    setInterval(updateServerResources, 5000); // Update every 5 seconds
+}
+

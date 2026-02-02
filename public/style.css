@@ -1016,6 +1016,203 @@ button:disabled {
     margin-top: 24px;
 }
 
+/* Server Resources Section */
+.server-resources {
+    margin-top: 30px;
+    padding-top: 30px;
+    border-top: 1px solid var(--border-color);
+}
+
+.server-resources .section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0 0 20px 0;
+}
+
+.resources-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.resource-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.resource-card:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.resource-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.resource-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.ram-icon {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.cpu-icon {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.disk-icon {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.network-icon {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.resource-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.resource-title {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.resource-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.resource-progress {
+    margin-bottom: 12px;
+}
+
+.progress-track {
+    height: 8px;
+    background: var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.ram-fill {
+    background: linear-gradient(90deg, #3b82f6, #2563eb);
+}
+
+.cpu-fill {
+    background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.disk-fill {
+    background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.progress-details {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.network-stats {
+    display: flex;
+    gap: 20px;
+}
+
+.network-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.network-stat .stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.network-stat .stat-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.resources-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.last-updated {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.refresh-btn {
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: none;
+}
+
+.refresh-btn:hover {
+    background: var(--border-color);
+}
+
+.refresh-btn:active {
+    transform: scale(0.98);
+}
+
+/* High usage indicators */
+.resource-card.warning .progress-fill {
+    background: linear-gradient(90deg, #f59e0b, #ef4444);
+}
+
+.resource-card.critical .progress-fill {
+    background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.resource-card.warning .resource-value,
+.resource-card.critical .resource-value {
+    color: var(--danger-color);
+}
+
 /* Connection Selector for Speed Test */
 .connection-selector {
     display: flex;
