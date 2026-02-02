@@ -235,6 +235,30 @@ class XrayManager {
     logger.log(`Updated config: ${name}`);
   }
 
+  async renameConfig(oldName: string, newName: string): Promise<void> {
+    const configs = await this.listConfigs();
+    const index = configs.findIndex(c => c.name === oldName);
+    if (index === -1) {
+      throw new Error(`Config "${oldName}" not found`);
+    }
+
+    // Check if new name already exists
+    if (configs.find(c => c.name === newName)) {
+      throw new Error(`Config with name "${newName}" already exists`);
+    }
+
+    // Update the name
+    configs[index].name = newName;
+    await fs.writeJson(OTHERS_JSON_PATH, configs, { spaces: 2 });
+    logger.log(`Renamed config from "${oldName}" to "${newName}"`);
+
+    // Update activeConfigName if it was the renamed config
+    if (this.activeConfigName === oldName) {
+      this.activeConfigName = newName;
+      await this.saveState();
+    }
+  }
+
   private async saveState(): Promise<void> {
     try {
       await fs.writeJson(STATE_JSON_PATH, { 

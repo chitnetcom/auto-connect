@@ -108,6 +108,20 @@ app.put('/api/configs/:name', async (req, res) => {
   }
 });
 
+app.patch('/api/configs/:name', async (req, res) => {
+  const { name } = req.params;
+  const { newName } = req.body;
+  if (!newName) {
+    return res.status(400).json({ error: 'New name is required' });
+  }
+  try {
+    await xrayManager.renameConfig(name, newName);
+    res.json({ message: `Config renamed from "${name}" to "${newName}"` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/test-latency', async (req, res) => {
   try {
     // Run tests in background

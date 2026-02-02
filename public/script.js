@@ -28,6 +28,7 @@ let currentStatus = 'Stopped';
 let configEditors = {}; // Store editor instances for accordion items
 let connectionStartTime = null;
 let connectionTimerInterval = null;
+let isAnyAccordionOpen = false; // Track if any accordion is open to pause auto-update
 
 // Authentication functions
 function getAuthToken() {
@@ -269,6 +270,12 @@ addConfigBtn.addEventListener('click', async () => {
 });
 
 async function updateLatencyResults() {
+    // Skip update if any accordion is open to prevent losing user's changes
+    if (isAnyAccordionOpen) {
+        console.log('Auto-update paused: accordion is open');
+        return;
+    }
+    
     try {
         const response = await authenticatedFetch('/api/test-results');
         const data = await response.json();
@@ -312,6 +319,16 @@ async function updateLatencyResults() {
                     </div>
                 </div>
                 <div class="accordion-content">
+                    <div class="config-name-input-container">
+                        <label for="config-name-${id.replace(/\s+/g, '-')}">Config Name:</label>
+                        <input 
+                            type="text" 
+                            id="config-name-${id.replace(/\s+/g, '-')}" 
+                            class="config-name-input" 
+                            value="${id}"
+                            data-original-name="${id}"
+                        />
+                    </div>
                     <div id="editor-${id.replace(/\s+/g, '-')}" class="mini-editor"></div>
                     <button class="save-btn" onclick="saveConfig('${id}')">Save Changes</button>
                 </div>
@@ -340,13 +357,47 @@ function toggleAccordion(name) {
     const items = document.querySelectorAll('.accordion-item');
     items.forEach(item => {
         if (item.dataset.name === name) {
+            const isOpening = !item.classList.contains('active');
             item.classList.toggle('active');
+            
+            // Update the flag based on whether any accordion is open
+            const openAccordions = document.querySelectorAll('.accordion-item.active');
+            isAnyAccordionOpen = openAccordions.length > 0;
+            
+            // Update visual indicator
+            updateAutoUpdateIndicator();
+            
             // Trigger layout for the editor inside
             if (configEditors[name]) {
                 configEditors[name].layout();
             }
         }
     });
+}
+
+// Function to update the visual indicator for auto-update status
+function updateAutoUpdateIndicator() {
+    return
+    let indicator = document.getElementById('autoUpdateIndicator');
+    
+    if (isAnyAccordionOpen) {
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'autoUpdateIndicator';
+            indicator.className = 'auto-update-paused';
+            indicator.innerHTML = '⏸️ Auto-update paused (accordion open)';
+            
+            // Insert after the section header
+            const sectionHeader = document.querySelector('#configs-tab .section-header');
+            if (sectionHeader) {
+                sectionHeader.insertAdjacentElement('afterend', indicator);
+            }
+        }
+    } else {
+        if (indicator) {
+            indicator.remove();
+        }
+    }
 }
 
 async function addToConnections(id) {
@@ -390,10 +441,22 @@ async function deleteConfig(name) {
     }
 }
 
-async function saveConfig(name) {
-    const editor = configEditors[name];
+async function saveConfig(originalName) {
+    const editor = configEditors[originalName];
     if (!editor) return;
 
+    // Get new name from input field
+    const inputId = `config-name-${originalName.replace(/\s+/g, '-')}`;
+    const nameInput = document.getElementById(inputId);
+    const newName = nameInput.value.trim();
+
+    // Validate new name
+    if (!newName) {
+        alert('Please enter a valid name');
+        return;
+    }
+
+    // Parse JSON config
     let config;
     try {
         config = JSON.parse(editor.getValue());
@@ -403,7 +466,26 @@ async function saveConfig(name) {
     }
 
     try {
-        const response = await authenticatedFetch(`/api/configs/${name}`, {
+        // First, rename if name has changed
+        if (newName !== originalName) {
+            const renameResponse = await authenticatedFetch(`/api/configs/${originalName}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newName: newName })
+            });
+            const renameData = await renameResponse.json();
+            if (renameData.error) {
+                alert(renameData.error);
+                // Reset input to original name on error
+                nameInput.value = originalName;
+                return;
+            }
+            // Update the originalName to newName for the config update
+            originalName = newName;
+        }
+
+        // Then, update the config content
+        const response = await authenticatedFetch(`/api/configs/${originalName}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ config })
@@ -412,11 +494,22 @@ async function saveConfig(name) {
         if (data.error) {
             alert(data.error);
         } else {
-            // alert(`Config "${name}" updated successfully`);
+            // Close the accordion after successful save to resume auto-update
+            const accordionItem = document.querySelector(`.accordion-item[data-name="${originalName}"]`);
+            if (accordionItem) {
+                accordionItem.classList.remove('active');
+                // Update the flag
+                const openAccordions = document.querySelectorAll('.accordion-item.active');
+                isAnyAccordionOpen = openAccordions.length > 0;
+                // Update visual indicator
+                updateAutoUpdateIndicator();
+            }
+            // Now update the latency results
             updateLatencyResults();
         }
     } catch (error) {
         console.error('Failed to update config:', error);
+        alert('Failed to update config');
     }
 }
 
@@ -921,8 +1014,8 @@ if (stopAllConnectionsBtn) {
 
 // Polling
 setInterval(updateStatusSummary, 2000);
-setInterval(updateLogs, 3000);
-setInterval(updateLatencyResults, 10000); // Slower polling for configs to avoid editor flickering
+setInterval(updateLogs, 1000);
+setInterval(updateLatencyResults, 1000); // Slower polling for configs to avoid editor flickering
 setInterval(updateConnectionsList, 3000); // Poll connections list
 
 // Initial load
